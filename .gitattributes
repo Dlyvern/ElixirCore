@@ -1,0 +1,2 @@
+external/physx/lib/linux/checked/*.a filter=lfs diff=lfs merge=lfs -text
+external/assimp/lib/libassimp.a filter=lfs diff=lfs merge=lfs -text
