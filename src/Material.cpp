@@ -21,20 +21,20 @@ void Material::setBaseColor(const glm::vec3 &color)
     m_baseColor = color;
 }
 
-void Material::addTexture(const GLitch::Texture::TextureType &type, GLitch::Texture *texture)
+void Material::addTexture(const elix::Texture::TextureType &type, elix::Texture *texture)
 {
     m_textures[type] = texture;
 
-    if (type == GLitch::Texture::TextureType::Diffuse)
+    if (type == elix::Texture::TextureType::Diffuse)
         m_useBaseColor = texture == nullptr;
 }
 
-GLitch::Texture* Material::getTexture(const GLitch::Texture::TextureType &type)
+elix::Texture* Material::getTexture(const elix::Texture::TextureType &type)
 {
     return m_textures[type];
 }
 
-const std::unordered_map<GLitch::Texture::TextureType, GLitch::Texture *>& Material::getTextures() const
+const std::unordered_map<elix::Texture::TextureType, elix::Texture *>& Material::getTextures() const
 {
     return m_textures;
 }
@@ -44,11 +44,11 @@ const glm::vec3& Material::getBaseColor() const
     return m_baseColor;
 }
 
-void Material::bind(GLitch::Shader &shader)
+void Material::bind(elix::Shader &shader)
 {
     int textureUnit = 0;
 
-    auto bindTex = [&shader, &textureUnit, this](GLitch::Texture::TextureType type, const std::string& uniformName, const std::string& enabledFlag)
+    auto bindTex = [&shader, &textureUnit, this](elix::Texture::TextureType type, const std::string& uniformName, const std::string& enabledFlag)
     {
         auto texture = getTexture(type);
 
@@ -65,11 +65,11 @@ void Material::bind(GLitch::Shader &shader)
         }
     };
 
-    bindTex(GLitch::Texture::TextureType::Diffuse,   "u_Diffuse",   "use_Diffuse");
-    bindTex(GLitch::Texture::TextureType::Normal,    "u_Normal",    "use_Normal");
-    bindTex(GLitch::Texture::TextureType::Metallic,  "u_Metallic",  "use_Metallic");
-    bindTex(GLitch::Texture::TextureType::Roughness, "u_Roughness", "use_Roughness");
-    bindTex(GLitch::Texture::TextureType::AO,        "u_AO",        "use_AO");
+    bindTex(elix::Texture::TextureType::Diffuse,   "u_Diffuse",   "use_Diffuse");
+    bindTex(elix::Texture::TextureType::Normal,    "u_Normal",    "use_Normal");
+    bindTex(elix::Texture::TextureType::Metallic,  "u_Metallic",  "use_Metallic");
+    bindTex(elix::Texture::TextureType::Roughness, "u_Roughness", "use_Roughness");
+    bindTex(elix::Texture::TextureType::AO,        "u_AO",        "use_AO");
 
     shader.setVec3("baseColor", m_baseColor);
 }

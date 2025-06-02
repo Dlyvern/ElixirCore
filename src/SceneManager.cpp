@@ -190,48 +190,52 @@ std::vector<std::shared_ptr<GameObject>> SceneManager::loadObjectsFromFile(const
     std::vector<std::shared_ptr<GameObject>> objects;
 
     std::ifstream file(filePath);
+
+    if (!file.is_open())
+    {
+        std::cerr << "SceneManager::loadObjectsFromFile(): Could not open file: " << filePath << std::endl;
+        return objects;
+    }
+
     nlohmann::json json;
     file >> json;
 
+    if (!json.contains("walls"))
+        return objects;
+
     for (const auto& objectJson : json["walls"])
     {
-        std::shared_ptr<GameObject> gameObject;
-        const std::string& name = objectJson["name"];
+        const std::string& name = objectJson.contains("name") ? objectJson["name"] : "";
 
         const bool isSkinned = objectJson.contains("skinnedModel");
+
+        // if (objectJson.contains("skinnedModel") || "model")
         const std::string modelName = objectJson[isSkinned ? "skinnedModel" : "model"];
         const std::string modelPath = filesystem::getModelsFolderPath().string() + '/' + modelName;
 
-        common::Model* model{nullptr};
+        std::shared_ptr<GameObject> gameObject = std::make_shared<GameObject>(name);
+
+        common::Model* model = AssetsManager::instance().getModelByName(modelName);
 
         if (isSkinned)
-        {
-            auto voidObject = std::make_shared<GameObject>(name);
-            auto m = AssetsManager::instance().getSkinnedModelByName(modelName);
-            voidObject->addComponent<SkeletalMeshComponent>(m);
-            model = m;
-            gameObject = voidObject;
-        }
+            gameObject->addComponent<SkeletalMeshComponent>(model);
         else
-        {
-            auto cube = std::make_shared<GameObject>(name);
-            auto m = AssetsManager::instance().getStaticModelByName(modelName);
-            cube->addComponent<StaticMeshComponent>(m);
-            model = m;
-            gameObject = cube;
-        }
+            gameObject->addComponent<StaticMeshComponent>(model);
 
         auto& overrideMaterials = gameObject->overrideMaterials;
 
         if (objectJson.contains("materials"))
         {
             const auto& materials = objectJson["materials"];
+
             for (int i = 0; i < model->getMeshesSize(); ++i)
             {
                 const std::string indexStr = std::to_string(i);
+
                 if (materials.contains(indexStr))
                 {
                     const std::string materialName = materials[indexStr];
+
                     if (!materialName.empty())
                     {
                         auto material = AssetsManager::instance().getMaterialByName(materialName);
@@ -241,42 +245,7 @@ std::vector<std::shared_ptr<GameObject>> SceneManager::loadObjectsFromFile(const
             }
         }
         else
-        {
-            Assimp::Importer importer;
-            const aiScene* scene = importer.ReadFile(modelPath, aiProcess_Triangulate | aiProcess_FlipUVs);
-
-            if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
-            {
-                std::cerr << "Assimp load error: " << importer.GetErrorString() << std::endl;
-                throw std::runtime_error("Could not load model: " + modelPath);
-            }
-
-            auto loadMaterialsRecursively = [&overrideMaterials](aiNode* node, const aiScene* scene, int meshIndex, auto&& self) -> void
-            {
-                for (unsigned int i = 0; i < node->mNumMeshes; ++i)
-                {
-                    aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-                    unsigned int materialIndex = mesh->mMaterialIndex;
-                    aiMaterial* aiMat = scene->mMaterials[materialIndex];
-
-                    if (aiMat)
-                    {
-                        if (auto mat = AssetsManager::instance().loadMaterialFromModel(aiMat))
-                        {
-                            overrideMaterials[meshIndex] = mat;
-                            std::cout << "Loaded material: " << mat->getName() << '\n';
-                        }
-                        else std::cout << "Failed to load material.\n";
-                    }
-                }
-
-                for (unsigned int i = 0; i < node->mNumChildren; ++i)
-                    self(node->mChildren[i], scene, meshIndex, self);
-            };
-
-            for (int i = 0; i < model->getMeshesSize(); ++i)
-                loadMaterialsRecursively(scene->mRootNode, scene, i, loadMaterialsRecursively);
-        }
+            AssetsManager::instance().loadMaterialFromFile(modelPath, model, overrideMaterials);
 
         if (objectJson.contains("position"))
         {
@@ -296,15 +265,19 @@ std::vector<std::shared_ptr<GameObject>> SceneManager::loadObjectsFromFile(const
             gameObject->setRotation({ rot[0], rot[1], rot[2] });
         }
 
-        // gameObject->addComponent<RigidbodyComponent>(gameObject);
+        gameObject->addComponent<RigidbodyComponent>(gameObject);
 
-        // if (isSkinned)
-            // physics::PhysicsController::instance().resizeCollider({1.0f, 2.0f, 1.0f}, gameObject);
+        if (isSkinned)
+            physics::PhysicsController::instance().resizeCollider({1.0f, 2.0f, 1.0f}, gameObject);
 
         if (objectJson.contains("components"))
         {
             for (const auto& componentJson : objectJson["components"])
             {
+                if (!componentJson.contains("type"))
+                    continue;
+
+                //TODO make it more safe, Cause it sucks...
                 if (componentJson["type"] == "LightComponent")
                 {
                     lighting::Light light;
@@ -327,7 +300,6 @@ std::vector<std::shared_ptr<GameObject>> SceneManager::loadObjectsFromFile(const
                 }
                 else if (componentJson["type"] == "ScriptComponent")
                 {
-                    std::cout << "Script component" << std::endl;
                     auto* scriptComponent = gameObject->addComponent<ScriptComponent>();
 
                     if (componentJson.contains("scripts"))
@@ -342,5 +314,6 @@ std::vector<std::shared_ptr<GameObject>> SceneManager::loadObjectsFromFile(const
         objects.push_back(gameObject);
     }
 
+    file.close();
     return objects;
 }

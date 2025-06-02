@@ -8,7 +8,7 @@ ShaderManager& ShaderManager::instance()
     return instance;
 }
 
-GLitch::Shader* ShaderManager::getShader(const ShaderType& type)
+elix::Shader* ShaderManager::getShader(const ShaderType& type)
 {
     return &m_shaders[type];
 }
@@ -19,7 +19,7 @@ void ShaderManager::preLoadShaders()
 
     auto createShader = [](const std::string& vert, const std::string& frag)
     {
-        GLitch::Shader shader;
+        elix::Shader shader;
         shader.load(vert, frag);
         return shader;
     };

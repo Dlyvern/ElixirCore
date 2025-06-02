@@ -18,12 +18,12 @@ public:
 
     static ShaderManager& instance();
 
-    GLitch::Shader* getShader(const ShaderType& type);
+    elix::Shader* getShader(const ShaderType& type);
 
     void preLoadShaders();
 
 private:
-    std::unordered_map<ShaderType, GLitch::Shader> m_shaders;
+    std::unordered_map<ShaderType, elix::Shader> m_shaders;
 };
 
 #endif //SHADER_MANAGER_HPP

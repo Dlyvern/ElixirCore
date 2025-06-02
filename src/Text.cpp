@@ -1,7 +1,8 @@
 #include "Text.hpp"
 #include <iostream>
 
-#include "glad.h"
+
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/ext/matrix_clip_space.hpp>
 #include "WindowsManager.hpp"
@@ -24,7 +25,6 @@ Text::Text()
 void Text::draw()
 {
     m_shader.bind();
-
 
     float x = m_x;
     float y = m_y;

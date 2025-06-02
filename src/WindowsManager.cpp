@@ -26,6 +26,7 @@ window::MainWindow* window::WindowsManager::createWindow()
 
 void window::WindowsManager::frameBufferSizeCallback(GLFWwindow *Window, int width, int height)
 {
+    glViewport(0, 0, width, height);
 }
 
 void window::WindowsManager::windowFocusCallback(GLFWwindow *window, int isFocused)

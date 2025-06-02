@@ -7,6 +7,8 @@ class Script
 {
 public:
     virtual ~Script() = default;
+
+    virtual void onStart() = 0;
     virtual void onUpdate(float deltaTime) = 0;
     virtual std::string getScriptName() const = 0;
 

@@ -78,9 +78,9 @@ AssetsManager& AssetsManager::instance()
     return assetsManager;
 }
 
-GLitch::Texture AssetsManager::loadTexture(const std::string &path)
+elix::Texture AssetsManager::loadTexture(const std::string &path)
 {
-    return GLitch::Texture{path};
+    return elix::Texture{path};
 }
 
 std::vector<common::Model*> AssetsManager::getAllLoadedModels() const
@@ -281,7 +281,7 @@ Material* AssetsManager::loadMaterialFromModel(aiMaterial *aiMat)
 
             auto* texture = getTextureByName(textureName);
 
-            material.addTexture(GLitch::Texture::TextureType::Diffuse, texture);
+            material.addTexture(elix::Texture::TextureType::Diffuse, texture);
         }
     }
 
@@ -313,7 +313,7 @@ Material* AssetsManager::loadMaterialFromModel(aiMaterial *aiMat)
 
             auto* texture = getTextureByName(textureName);
 
-            material.addTexture(GLitch::Texture::TextureType::Normal, texture);
+            material.addTexture(elix::Texture::TextureType::Normal, texture);
         }
     }
 
@@ -334,11 +334,11 @@ Material* AssetsManager::loadMaterialFromModel(aiMaterial *aiMat)
 
     json["color"] = {col.r, col.g, col.b};
     json["textures"] = {
-        { "Diffuse", material.getTexture(GLitch::Texture::TextureType::Diffuse) ? material.getTexture(GLitch::Texture::TextureType::Diffuse)->getName() : "" },
-        { "Normal", material.getTexture(GLitch::Texture::TextureType::Normal) ? material.getTexture(GLitch::Texture::TextureType::Normal)->getName() : "" },
-        { "Metallic", material.getTexture(GLitch::Texture::TextureType::Metallic) ? material.getTexture(GLitch::Texture::TextureType::Metallic)->getName() : "" },
-        { "Roughness", material.getTexture(GLitch::Texture::TextureType::Roughness) ? material.getTexture(GLitch::Texture::TextureType::Roughness)->getName() : "" },
-        { "AO", material.getTexture(GLitch::Texture::TextureType::AO) ? material.getTexture(GLitch::Texture::TextureType::AO)->getName() : "" }
+        { "Diffuse", material.getTexture(elix::Texture::TextureType::Diffuse) ? material.getTexture(elix::Texture::TextureType::Diffuse)->getName() : "" },
+        { "Normal", material.getTexture(elix::Texture::TextureType::Normal) ? material.getTexture(elix::Texture::TextureType::Normal)->getName() : "" },
+        { "Metallic", material.getTexture(elix::Texture::TextureType::Metallic) ? material.getTexture(elix::Texture::TextureType::Metallic)->getName() : "" },
+        { "Roughness", material.getTexture(elix::Texture::TextureType::Roughness) ? material.getTexture(elix::Texture::TextureType::Roughness)->getName() : "" },
+        { "AO", material.getTexture(elix::Texture::TextureType::AO) ? material.getTexture(elix::Texture::TextureType::AO)->getName() : "" }
     };
 
     auto fileName = filesystem::getMaterialsFolderPath().string() + "/" + material.getName() + ".mat";
@@ -354,6 +354,45 @@ Material* AssetsManager::loadMaterialFromModel(aiMaterial *aiMat)
         std::cout << "Could not open file " << fileName << std::endl;
 
     return &m_materials[material.getName()];
+}
+
+void AssetsManager::loadMaterialFromFile(const std::string &path, common::Model* model, std::unordered_map<int, Material*>& overrideMaterials)
+{
+    Assimp::Importer importer;
+    const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
+
+    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
+    {
+        std::cerr << "Assimp load error: " << importer.GetErrorString() << std::endl;
+        throw std::runtime_error("Could not load model: " + path);
+    }
+
+    auto loadMaterialsRecursively = [&overrideMaterials](aiNode* node, const aiScene* scene, int meshIndex, auto&& self) -> void
+    {
+        for (unsigned int i = 0; i < node->mNumMeshes; ++i)
+        {
+            aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
+            unsigned int materialIndex = mesh->mMaterialIndex;
+            aiMaterial* aiMat = scene->mMaterials[materialIndex];
+
+            if (aiMat)
+            {
+                if (auto mat = AssetsManager::instance().loadMaterialFromModel(aiMat))
+                {
+                    overrideMaterials[meshIndex] = mat;
+                    std::cout << "Loaded material: " << mat->getName() << '\n';
+                }
+                else std::cout << "Failed to load material.\n";
+            }
+        }
+
+        for (unsigned int i = 0; i < node->mNumChildren; ++i)
+            self(node->mChildren[i], scene, meshIndex, self);
+    };
+
+    for (int i = 0; i < model->getMeshesSize(); ++i)
+        loadMaterialsRecursively(scene->mRootNode, scene, i, loadMaterialsRecursively);
+
 }
 
 void AssetsManager::saveAnimationToJson(const common::Animation &animation)
@@ -712,7 +751,7 @@ Material AssetsManager::loadMaterial(const std::string &path)
             if (!value.is_string() || value.get<std::string>().empty())
                 continue;
 
-            if (const auto textureType = utilities::fromStringToTextureType(key); textureType != GLitch::Texture::TextureType::Undefined)
+            if (const auto textureType = utilities::fromStringToTextureType(key); textureType != elix::Texture::TextureType::Undefined)
                 if (auto texture = getTextureByName(value.get<std::string>()))
                     material.addTexture(textureType, texture);
         }

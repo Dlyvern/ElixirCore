@@ -65,58 +65,58 @@ namespace utilities
         return 0;
     }
 
-    inline std::string fromTypeToString(const GLitch::Texture::TextureType& type)
+    inline std::string fromTypeToString(const elix::Texture::TextureType& type)
     {
         switch (type)
         {
-            case GLitch::Texture::TextureType::Diffuse:
+            case elix::Texture::TextureType::Diffuse:
                 return "Diffuse";
-            case GLitch::Texture::TextureType::Specular:
+            case elix::Texture::TextureType::Specular:
                 return "Specular";
-            case GLitch::Texture::TextureType::Normal:
+            case elix::Texture::TextureType::Normal:
                 return "Normal";
-            case GLitch::Texture::TextureType::Metallic:
+            case elix::Texture::TextureType::Metallic:
                 return "Metallic";
-            case GLitch::Texture::TextureType::Roughness:
+            case elix::Texture::TextureType::Roughness:
                 return "Roughness";
-            case GLitch::Texture::TextureType::AO:
+            case elix::Texture::TextureType::AO:
                 return "AO";
-            case GLitch::Texture::TextureType::Emissive:
+            case elix::Texture::TextureType::Emissive:
                 return "Emissive";
-            case GLitch::Texture::TextureType::Height:
+            case elix::Texture::TextureType::Height:
                 return "Height";
-            case GLitch::Texture::TextureType::Glossiness:
+            case elix::Texture::TextureType::Glossiness:
                 return "Glossiness";
-            case GLitch::Texture::TextureType::Opacity:
+            case elix::Texture::TextureType::Opacity:
                 return "Opacity";
             default:
                 return "Undefined";
         }
     }
 
-    inline GLitch::Texture::TextureType fromStringToTextureType(const std::string& type)
+    inline elix::Texture::TextureType fromStringToTextureType(const std::string& type)
     {
         if (type == "Diffuse")
-            return GLitch::Texture::TextureType::Diffuse;
+            return elix::Texture::TextureType::Diffuse;
         if (type == "Specular")
-            return GLitch::Texture::TextureType::Specular;
+            return elix::Texture::TextureType::Specular;
         if (type == "Normal")
-            return GLitch::Texture::TextureType::Normal;
+            return elix::Texture::TextureType::Normal;
         if (type == "Metallic")
-            return GLitch::Texture::TextureType::Metallic;
+            return elix::Texture::TextureType::Metallic;
         if (type == "Roughness")
-            return GLitch::Texture::TextureType::Roughness;
+            return elix::Texture::TextureType::Roughness;
         if (type == "AO")
-            return GLitch::Texture::TextureType::AO;
+            return elix::Texture::TextureType::AO;
         if (type == "Emissive")
-            return GLitch::Texture::TextureType::Emissive;
+            return elix::Texture::TextureType::Emissive;
         if (type == "Height")
-            return GLitch::Texture::TextureType::Height;
+            return elix::Texture::TextureType::Height;
         if (type == "Glossiness")
-            return GLitch::Texture::TextureType::Glossiness;
+            return elix::Texture::TextureType::Glossiness;
         if (type == "Opacity")
-            return GLitch::Texture::TextureType::Opacity;
-        return GLitch::Texture::TextureType::Undefined;
+            return elix::Texture::TextureType::Opacity;
+        return elix::Texture::TextureType::Undefined;
     }
 
     inline glm::vec3 interpolate(const glm::vec3& start, const glm::vec3& end, float t) {

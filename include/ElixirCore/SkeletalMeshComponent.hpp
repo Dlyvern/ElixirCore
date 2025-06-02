@@ -7,11 +7,11 @@
 class SkeletalMeshComponent final : public Component
 {
 public:
-    explicit SkeletalMeshComponent(SkinnedModel* model);
+    explicit SkeletalMeshComponent(common::Model* model);
 
     void update(float deltaTime) override {}
 
-    void render(GLitch::Shader& shader, const glm::mat4& modelMatrix, std::unordered_map<int, Material *>* overrideMaterials = nullptr) const;
+    void render(const elix::Shader &shader, std::unordered_map<int, Material*> *overrideMaterials = nullptr) const;
 
     [[nodiscard]] SkinnedModel* getModel() const;
 

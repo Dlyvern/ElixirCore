@@ -2,7 +2,7 @@
 #define MESH_HPP
 
 #include "Common.hpp"
-#include "Material.hpp"
+#include "VertexArray.hpp"
 
 class StaticMesh final : public common::Mesh
 {
@@ -19,8 +19,9 @@ public:
 
     ~StaticMesh() override;
 private:
-    unsigned int m_vao, m_vbo, m_ebo;
     uint32_t m_indicesCount{0};
+
+    elix::VertexArray m_vertexArray;
 
     std::vector<common::Vertex> m_vertices;
     std::vector<unsigned int> m_indices;

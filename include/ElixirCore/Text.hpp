@@ -7,16 +7,19 @@
 #include <glm/vec2.hpp>
 #include <unordered_map>
 
+#include "Drawable.hpp"
 #include "Shader.hpp"
 
 //TODO: Always centralize text??
 //TODO: Make 3d and 2d text
 //TODO: Fix shitty default position
-class Text
+
+
+//Drawable
+class Text : public Drawable
 {
 public:
     Text();
-
 
     //TODO: Maybe we can actually use font folder here, I think it will be stupid as fuck
     void setFont(const std::string& pathToFont);
@@ -31,7 +34,7 @@ public:
     float getX() const;
     float getY() const;
 
-    void draw();
+    void draw() override;
 
 private:
     void initShader(const std::string& vertexPath, const std::string& fragmentPath);
@@ -51,7 +54,7 @@ private:
 
     std::string m_fontPath;
 
-    GLitch::Shader m_shader;
+    elix::Shader m_shader;
 
     std::string m_text;
 

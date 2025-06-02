@@ -22,7 +22,7 @@ class AssetsManager
 public:
     static AssetsManager& instance();
 
-    inline GLitch::Texture* getTextureByName(const std::string& name);
+    inline elix::Texture* getTextureByName(const std::string& name);
     inline SkinnedModel* getSkinnedModelByName(const std::string& name);
     inline StaticModel* getStaticModelByName(const std::string& name);
     inline common::Model* getModelByName(const std::string& name);
@@ -50,10 +50,14 @@ public:
     std::vector<common::Animation> extractAnimationsFromModel(const std::string& pathToModel);
     Material* loadMaterialFromModel(aiMaterial* aiMat);
 
+
+    void loadMaterialFromFile(const std::string& path, common::Model* model, std::unordered_map<int, Material*>& overrideMaterials);
+
+
     void saveAnimationToJson(const common::Animation& animation);
 
     common::Animation loadAnimationFromJson(const std::string& path);
-    GLitch::Texture loadTexture(const std::string& path);
+    elix::Texture loadTexture(const std::string& path);
 
     ~AssetsManager();
 private:
@@ -61,7 +65,7 @@ private:
     SkinnedModel loadSkinnedModel(const std::string& path);
     StaticModel loadStaticModel(const std::string &path);
 
-    std::unordered_map<std::string, GLitch::Texture> m_textures;
+    std::unordered_map<std::string, elix::Texture> m_textures;
     std::unordered_map<std::string, SkinnedModel> m_skinnedModels;
     std::unordered_map<std::string, StaticModel> m_staticModels;
     std::unordered_map<std::string, Material> m_materials;
@@ -124,7 +128,7 @@ inline SkinnedModel* AssetsManager::getSkinnedModelByName(const std::string& nam
     return nullptr;
 }
 
-inline GLitch::Texture* AssetsManager::getTextureByName(const std::string& name)
+inline elix::Texture* AssetsManager::getTextureByName(const std::string& name)
 {
     if(auto it = m_textures.find(name); it != m_textures.cend())
         return &it->second;

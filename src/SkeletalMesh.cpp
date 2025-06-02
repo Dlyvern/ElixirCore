@@ -1,5 +1,5 @@
 #include "SkeletalMesh.hpp"
-#include "glad.h"
+#include <glad/glad.h>
 #include "ShaderManager.hpp"
 
 SkeletalMesh::SkeletalMesh(const std::vector<common::Vertex> &vertices, const std::vector<unsigned int> &indices)

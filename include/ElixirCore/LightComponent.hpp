@@ -16,6 +16,8 @@ public:
     lighting::Light* getLight();
 
     void setOwner(GameObject* owner) override;
+
+    void destroy() override;
 private:
     lighting::Light m_light{};
 

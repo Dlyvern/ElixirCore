@@ -2,6 +2,8 @@
 #define LIGHT_HPP
 
 #include <glm/vec3.hpp>
+#include <glm/trigonometric.hpp>
+#include <glm/mat4x4.hpp>
 
 namespace lighting
 {
@@ -21,6 +23,11 @@ public:
     float radius{2.0f};
     LightType type{LightType::DIRECTIONAL};
     glm::vec3 direction;
+
+    float cutoff = glm::cos(glm::radians(12.5f));
+    float outerCutoff = glm::cos(glm::radians(17.5f));
+
+    glm::mat4 lightSpaceMatrix;
 };
 } //namespace lighting
 

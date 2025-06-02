@@ -1,5 +1,6 @@
 #include "LightComponent.hpp"
 #include "GameObject.hpp"
+#include "LightManager.hpp"
 
 LightComponent::LightComponent(const lighting::Light &light) : m_light(light)
 {
@@ -18,6 +19,12 @@ void LightComponent::setOwner(GameObject *owner)
     Component::setOwner(owner);
 
     owner->setTransformationChangedCallback(std::bind(&LightComponent::onTransformationOwnerChanged, this, std::placeholders::_1));
+}
+
+void LightComponent::destroy()
+{
+    Component::destroy();
+    LightManager::instance().removeLight(&m_light);
 }
 
 void LightComponent::onTransformationOwnerChanged(const glm::mat4 &transformation)

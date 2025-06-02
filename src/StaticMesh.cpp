@@ -1,6 +1,8 @@
 #include "StaticMesh.hpp"
-#include "glad.h"
-#include "ShaderManager.hpp"
+#include <glad/glad.h>
+#include "Buffer.hpp"
+
+#include "DrawCall.hpp"
 
 StaticMesh::StaticMesh(const std::vector<common::Vertex> &vertices, const std::vector<unsigned int> &indices)
 {
@@ -12,9 +14,9 @@ StaticMesh::StaticMesh() = default;
 
 void StaticMesh::draw()
 {
-    glBindVertexArray(m_vao);
-    glDrawElements(GL_TRIANGLES, m_indicesCount, GL_UNSIGNED_INT, nullptr);
-    glBindVertexArray(0);
+    m_vertexArray.bind();
+    elix::DrawCall::draw(elix::DrawCall::DrawMode::TRIANGLES, m_indicesCount, elix::DrawCall::DrawType::UNSIGNED_INT, nullptr);
+    m_vertexArray.unbind();
 }
 
 void StaticMesh::setVerticesAndIndices(const std::vector<common::Vertex> &vertices, const std::vector<unsigned int> &indices)
@@ -25,43 +27,28 @@ void StaticMesh::setVerticesAndIndices(const std::vector<common::Vertex> &vertic
 
 void StaticMesh::loadFromRaw()
 {
-    glGenVertexArrays(1, &m_vao);
-    glGenBuffers(1, &m_vbo);
-    glGenBuffers(1, &m_ebo);
+    elix::Buffer vbo(elix::Buffer::BufferType::Vertex, elix::Buffer::BufferUsage::StaticDraw);
+    elix::Buffer ebo(elix::Buffer::BufferType::Index, elix::Buffer::BufferUsage::StaticDraw);
 
+    m_vertexArray.create();
+    vbo.create();
+    ebo.create();
 
-    glBindVertexArray(m_vao);
+    m_vertexArray.bind();
 
-    glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-    glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(common::Vertex), m_vertices.data(), GL_STATIC_DRAW);
+    vbo.uploadRaw(m_vertices.data(), m_vertices.size() * sizeof(common::Vertex));
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(unsigned int), m_indices.data(), GL_STATIC_DRAW);
+    ebo.uploadRaw(m_indices.data(), m_indices.size() * sizeof(unsigned int));
 
-    // Vertex positions
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(common::Vertex), (void*)offsetof(common::Vertex, position));
-    glEnableVertexAttribArray(0);
+    m_vertexArray.setAttribute(0, 3, elix::VertexArray::Type::Float, false, sizeof(common::Vertex),  (void*)offsetof(common::Vertex, position));
+    m_vertexArray.setAttribute(1, 3, elix::VertexArray::Type::Float, false, sizeof(common::Vertex),  (void*)offsetof(common::Vertex, normal));
+    m_vertexArray.setAttribute(2, 2, elix::VertexArray::Type::Float, false, sizeof(common::Vertex),  (void*)offsetof(common::Vertex, textureCoordinates));
 
-    // Normals
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(common::Vertex), (void*)offsetof(common::Vertex, normal));
-    glEnableVertexAttribArray(1);
-
-    // Texture coordinates
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(common::Vertex), (void*)offsetof(common::Vertex, textureCoordinates));
-    glEnableVertexAttribArray(2);
-
-    glBindVertexArray(0);
-
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    m_vertexArray.unbind();
+    vbo.unbind();
+    ebo.unbind();
 
     m_indicesCount = m_indices.size();
 }
 
-StaticMesh::~StaticMesh()
-{
-    // if (m_ebo) glDeleteBuffers(1, &m_ebo);
-    // if (m_vbo) glDeleteBuffers(1, &m_vbo);
-    // if (m_vao) glDeleteVertexArrays(1, &m_vao);
-}
+StaticMesh::~StaticMesh() = default;

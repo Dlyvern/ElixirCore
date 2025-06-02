@@ -9,9 +9,24 @@ void Scene::setOnSceneEndCallback(const std::function<void(Scene* scene)> &callb
     onEndSceneCallback_ = callback;
 }
 
-void Scene::addGameObject(std::shared_ptr<GameObject> gameObject)
+void Scene::setSkybox(const std::shared_ptr<elix::Skybox> &skybox)
+{
+    m_skybox = skybox;
+}
+
+std::shared_ptr<elix::Skybox> Scene::getSkybox() const
+{
+    return m_skybox;
+}
+
+void Scene::addGameObject(const std::shared_ptr<GameObject>& gameObject)
 {
     m_objects.push_back(gameObject);
+}
+
+void Scene::addDrawable(const std::shared_ptr<Drawable> &drawable)
+{
+    m_drawables.push_back(drawable);
 }
 
 void Scene::setGameObjects(const std::vector<std::shared_ptr<GameObject>> &gameObjects)
@@ -41,4 +56,9 @@ bool Scene::deleteGameObject(GameObject *gameObject)
 const std::vector<std::shared_ptr<GameObject>>& Scene::getGameObjects()
 {
     return m_objects;
+}
+
+const std::vector<std::shared_ptr<Drawable>>& Scene::getDrawables()
+{
+    return m_drawables;
 }
