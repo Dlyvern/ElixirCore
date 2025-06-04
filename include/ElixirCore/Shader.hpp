@@ -15,6 +15,8 @@ namespace elix
         Shader(const std::string& vertexPath, const std::string& fragmentPath, const std::string& geometryPath = {});
 
         void load(const std::string& vertexPath, const std::string& fragmentPath, const std::string& geometryPath = {});
+
+        void loadBinaries(const char* vertexPath, const char* fragmentPath, const char* geometryPath = nullptr);
         void bind() const;
         void unbind() const;
 

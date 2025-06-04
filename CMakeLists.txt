@@ -26,6 +26,7 @@ set(INCLUDE_DIR include/ElixirCore)
 set(SRC_DIR src)
 set(LIBRARIES_DIR libraries)
 set(EXTERNAL_DIR external)
+set(SHADERS_DST_DIR ${CMAKE_BINARY_DIR}/resources/shaders)
 
 set(GLM_ROOT ${CMAKE_SOURCE_DIR}/external/glm)
 set(PHYSX_ROOT ${CMAKE_SOURCE_DIR}/external/physx)
@@ -68,8 +69,43 @@ if(ELIXIR_PLATFORM_WINDOWS)
     add_definitions(-DNOMINMAX)
 endif()
 
+
+
+# === Baking shaders ===
+
+file(GLOB SHADERS "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/*.vert"
+        "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/*.frag")
+
+set(EMBEDDED_SHADER_SOURCES "")
+
+foreach(SHADER ${SHADERS})
+    get_filename_component(FILENAME ${SHADER} NAME)              # e.g., "text.vert"
+    get_filename_component(FILENAME_WE ${SHADER} NAME_WE)        # e.g., "text"
+
+    string(REPLACE "." "_" VAR_NAME ${FILENAME})                 # e.g., "text_vert"
+
+    set(OUTPUT_CPP "${CMAKE_CURRENT_BINARY_DIR}/embedded_shaders/${FILENAME}.cpp")
+
+    add_custom_command(
+            OUTPUT ${OUTPUT_CPP}
+            COMMAND ${CMAKE_COMMAND}
+            -DINPUT=${SHADER}
+            -DOUTPUT=${OUTPUT_CPP}
+            -DVAR_NAME=${VAR_NAME}
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_shader.cmake
+            DEPENDS ${SHADER}
+            COMMENT "Embedding shader: ${FILENAME}"
+    )
+
+    list(APPEND EMBEDDED_SHADER_SOURCES ${OUTPUT_CPP})
+endforeach()
+
+# === End baking shaders ===
+
+
+
 # === Create Static Library ===
-add_library(${PROJECT_NAME} STATIC ${PROJECT_HEADERS} ${PROJECT_SOURCES})
+add_library(${PROJECT_NAME} STATIC ${PROJECT_HEADERS} ${PROJECT_SOURCES}  ${EMBEDDED_SHADER_SOURCES})
 add_library(Elixir::ElixirCore ALIAS ElixirCore)
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
@@ -140,7 +176,29 @@ else()
             ${LIBZ_ROOT}/lib/libz.a
     )
 endif()
-# === Install ElixirCore and Export Targets ===
+
+
+
+
+set(HEADER_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/EmbeddedShaders.hpp")
+
+file(WRITE ${HEADER_OUTPUT} "// Auto-generated header for embedded shaders\n")
+file(APPEND ${HEADER_OUTPUT} "#pragma once\n\n")
+
+foreach(SHADER_CPP ${EMBEDDED_SHADER_SOURCES})
+    get_filename_component(FILENAME ${SHADER_CPP} NAME)
+
+    string(REPLACE ".cpp" "" BASENAME ${FILENAME})
+
+    string(REPLACE "." "_" VAR_NAME ${BASENAME})
+
+    file(APPEND ${HEADER_OUTPUT} "extern const char* shader_${VAR_NAME};\n")
+endforeach()
+
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+
+
+
 install(TARGETS ElixirCore
         EXPORT ElixirCoreTargets
         ARCHIVE DESTINATION lib
@@ -182,6 +240,13 @@ install(FILES
         "${CMAKE_CURRENT_BINARY_DIR}/ElixirCoreConfigVersion.cmake"
         DESTINATION lib/cmake/ElixirCore
 )
+
+#add_custom_command(
+#        TARGET ${PROJECT_NAME} POST_BUILD
+#        COMMAND ${CMAKE_COMMAND} -E copy_directory
+#        ${SHADERS_DST_DIR} ${SHADERS_DST_DIR}
+#        COMMENT "Copying shaders to ${SHADERS_DST_DIR}"
+#)
 
 
 #set(REQUIRED_PHYSX_LIBS

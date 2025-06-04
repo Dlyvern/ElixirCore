@@ -1,9 +1,11 @@
 #ifndef DEBUG_LINE_HPP
 #define DEBUG_LINE_HPP
 
-#include "Shader.hpp"
 #include "Buffer.hpp"
 #include "VertexArray.hpp"
+#include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
+#include <glm/mat4x4.hpp>
 
 namespace elix::debug
 {
@@ -24,8 +26,6 @@ namespace elix::debug
         float m_lineWidth{2.0f};
 
         glm::vec4 m_color{0, 1, 0, 1};
-
-        elix::Shader m_shader;
     };
 } //namespace debug
 

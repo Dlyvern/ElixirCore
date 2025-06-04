@@ -1,21 +1,18 @@
 #include "SceneManager.hpp"
 
 #include <fstream>
-#include <assimp/Importer.hpp>
-#include <assimp/postprocess.h>
 #include <json/json.hpp>
-
 #include "AnimatorComponent.hpp"
 #include "AssetsManager.hpp"
-#include "Filesystem.hpp"
 #include "Light.hpp"
 #include "LightComponent.hpp"
 #include "LightManager.hpp"
+#include "Logger.hpp"
 #include "RigidbodyComponent.hpp"
-#include "ScriptsLoader.hpp"
 #include "ScriptsRegister.hpp"
 #include "SkeletalMeshComponent.hpp"
 #include "StaticMeshComponent.hpp"
+
 
 class LightComponent;
 
@@ -30,29 +27,9 @@ void SceneManager::setCurrentScene(Scene *scene)
     m_currentScene = scene;
 }
 
-Scene* SceneManager::getCurrentScene()
+Scene* SceneManager::getCurrentScene() const
 {
     return m_currentScene;
-}
-
-void SceneManager::addScene(Scene *scene)
-{
-    scene->setOnSceneEndCallback(std::bind(&SceneManager::onSceneIsOver, this, std::placeholders::_1));
-    m_scenes.push_back(scene);
-}
-
-void SceneManager::onSceneIsOver(Scene* scene)
-{
-    m_scenes.erase(std::find(m_scenes.begin(), m_scenes.end(), scene));
-    delete scene;
-
-    if (!m_scenes.empty())
-    {
-        Scene* newScene = m_scenes.back();
-        newScene->create();
-
-        setCurrentScene(newScene);
-    }
 }
 
 void SceneManager::updateCurrentScene(float deltaTime)
@@ -209,43 +186,44 @@ std::vector<std::shared_ptr<GameObject>> SceneManager::loadObjectsFromFile(const
 
         const bool isSkinned = objectJson.contains("skinnedModel");
 
-        // if (objectJson.contains("skinnedModel") || "model")
         const std::string modelName = objectJson[isSkinned ? "skinnedModel" : "model"];
-        const std::string modelPath = filesystem::getModelsFolderPath().string() + '/' + modelName;
 
-        std::shared_ptr<GameObject> gameObject = std::make_shared<GameObject>(name);
+        auto gameObject = std::make_shared<GameObject>(name);
 
-        common::Model* model = AssetsManager::instance().getModelByName(modelName);
-
-        if (isSkinned)
-            gameObject->addComponent<SkeletalMeshComponent>(model);
-        else
-            gameObject->addComponent<StaticMeshComponent>(model);
-
-        auto& overrideMaterials = gameObject->overrideMaterials;
-
-        if (objectJson.contains("materials"))
+        if (common::Model* model = AssetsManager::instance().getModelByName(modelName))
         {
-            const auto& materials = objectJson["materials"];
+            if (isSkinned)
+                gameObject->addComponent<SkeletalMeshComponent>(model);
+            else
+                gameObject->addComponent<StaticMeshComponent>(model);
 
-            for (int i = 0; i < model->getMeshesSize(); ++i)
+            auto& overrideMaterials = gameObject->overrideMaterials;
+
+            if (objectJson.contains("materials"))
             {
-                const std::string indexStr = std::to_string(i);
+                const auto& materials = objectJson["materials"];
 
-                if (materials.contains(indexStr))
+                for (int i = 0; i < model->getMeshesSize(); ++i)
                 {
-                    const std::string materialName = materials[indexStr];
+                    const std::string indexStr = std::to_string(i);
 
-                    if (!materialName.empty())
+                    if (materials.contains(indexStr))
                     {
-                        auto material = AssetsManager::instance().getMaterialByName(materialName);
-                        overrideMaterials[i] = material;
+                        const std::string materialName = materials[indexStr];
+
+                        if (!materialName.empty())
+                        {
+                            if (auto material = AssetsManager::instance().getMaterialByName(materialName))
+                                overrideMaterials[i] = material;
+                            else
+                                LOG_WARN("Could not find material " + materialName);
+                        }
                     }
                 }
             }
         }
         else
-            AssetsManager::instance().loadMaterialFromFile(modelPath, model, overrideMaterials);
+            LOG_WARN("Could not find model with name " + modelName);
 
         if (objectJson.contains("position"))
         {

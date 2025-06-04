@@ -4,11 +4,12 @@
 #include "ft2build.h"
 #include FT_FREETYPE_H
 
+#include <glm/vec3.hpp>
 #include <glm/vec2.hpp>
 #include <unordered_map>
 
 #include "Drawable.hpp"
-#include "Shader.hpp"
+#include <string>
 
 //TODO: Always centralize text??
 //TODO: Make 3d and 2d text
@@ -37,7 +38,6 @@ public:
     void draw() override;
 
 private:
-    void initShader(const std::string& vertexPath, const std::string& fragmentPath);
 
     //TODO Do we actually need it here????
     struct Character
@@ -53,8 +53,6 @@ private:
     FT_Library m_ftLibrary;
 
     std::string m_fontPath;
-
-    elix::Shader m_shader;
 
     std::string m_text;
 

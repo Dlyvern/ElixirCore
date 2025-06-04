@@ -4,9 +4,10 @@ Scene::Scene() = default;
 
 Scene::~Scene() = default;
 
-void Scene::setOnSceneEndCallback(const std::function<void(Scene* scene)> &callback)
+void Scene::update(float deltaTime)
 {
-    onEndSceneCallback_ = callback;
+    for (const auto& object : m_objects)
+        object->update(deltaTime);
 }
 
 void Scene::setSkybox(const std::shared_ptr<elix::Skybox> &skybox)

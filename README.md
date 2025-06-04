@@ -24,37 +24,34 @@
 ### Build
 
 ```bash
-
-    mkdir build
-    cd build
-    cmake ..
-    sudo make install
+mkdir build
+cd build
+cmake ..
+sudo make install
 ```
 
 
 ### CMake
 
 ```cmake
-
 find_package(ElixirCore REQUIRED)
 
 target_include_directories(GameLib PRIVATE ${ELIXIR_CORE_INCLUDE})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE Elixir::ElixirCore)
-
 ```
 
 ## Example
 
 ```c++
-    #include "Elixir/Application.hpp"
+#include "Elixir/Application.hpp"
+
+int main()
+{
+    elix::Application::instance().init();
     
-    int main()
-    {
-        elix::Application::instance().init();
-        
-        //your main loop of game or engine
-        
-        return 0;
-    }
+    //your main loop of game or engine
+    
+    return 0;
+}
 ```

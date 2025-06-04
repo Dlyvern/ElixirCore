@@ -9,9 +9,7 @@ public:
 
     void setCurrentScene(Scene* scene);
 
-    Scene* getCurrentScene();
-
-    void addScene(Scene* scene);
+    Scene* getCurrentScene() const;
 
     void updateCurrentScene(float deltaTime);
 
@@ -21,9 +19,6 @@ public:
     ~SceneManager() = default;
 private:
     Scene* m_currentScene{nullptr};
-    std::vector<Scene*> m_scenes;
-
-    void onSceneIsOver(Scene* scene);
 
     SceneManager() = default;
     SceneManager(const SceneManager&) = delete;

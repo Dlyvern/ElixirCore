@@ -36,6 +36,10 @@ public:
     std::vector<std::string> getAllSkinnedModelsNames() const;
     std::vector<std::string> getAllStaticModelsNames() const;
 
+    void preLoadAllModelsFromFolder(const std::string& folder);
+    void preLoadAllTexturesFromFolder(const std::string& folder);
+    void preLoadMaterialsFromFolder(const std::string& folder);
+
     void preLoadPathsForAllModels();
     void preLoadPathsForAllTextures();
     void preLoadPathsForAllMaterials();
@@ -50,11 +54,9 @@ public:
     std::vector<common::Animation> extractAnimationsFromModel(const std::string& pathToModel);
     Material* loadMaterialFromModel(aiMaterial* aiMat);
 
-
     void loadMaterialFromFile(const std::string& path, common::Model* model, std::unordered_map<int, Material*>& overrideMaterials);
 
-
-    void saveAnimationToJson(const common::Animation& animation);
+    void saveAnimationToJson(const common::Animation& animation, const std::string& path);
 
     common::Animation loadAnimationFromJson(const std::string& path);
     elix::Texture loadTexture(const std::string& path);

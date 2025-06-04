@@ -4,9 +4,6 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 #include "Common.hpp"
-
-#include "Filesystem.hpp"
-
 #include <unordered_map>
 #include <map>
 #include <json/json.hpp>
@@ -14,6 +11,8 @@
 #include "Skeleton.hpp"
 #include "Utilities.hpp"
 #include <glm/gtx/euler_angles.hpp>
+#include "Logger.hpp"
+
 namespace
 {
     void extractVerticesAndIndices(aiMesh* mesh, std::vector<common::Vertex>& vertices, std::vector<unsigned int>& indices)
@@ -199,6 +198,87 @@ std::vector<std::string> AssetsManager::getAllStaticModelsNames() const
     return staticModelNames;
 }
 
+void AssetsManager::preLoadAllModelsFromFolder(const std::string &folder)
+{
+    if (!std::filesystem::exists(folder))
+    {
+        LOG_WARN(folder + " does not exist");
+        return;
+    }
+
+    for (const auto& entry : std::filesystem::directory_iterator(folder))
+    {
+        const std::string& extension = entry.path().extension();
+
+        if (extension == ".fbx" || extension == ".obj")
+        {
+            std::filesystem::path file(entry.path());
+
+            Assimp::Importer importer;
+
+            const aiScene* scene = importer.ReadFile(file, aiProcess_Triangulate | aiProcess_FlipUVs);
+
+            if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
+            {
+                std::cerr << "AssetsManager::preLoadPathsForAllModels(): ERROR::ASSIMP::" << importer.GetErrorString();
+                continue;
+            }
+
+            bool foundSkinned = false;
+            auto modelType = detectModelType(scene->mRootNode, scene, foundSkinned);
+
+            if (modelType == common::Model::ModelType::SKINNED)
+                m_skinnedModels[entry.path().filename()] = loadSkinnedModel(file);
+            else if (modelType == common::Model::ModelType::STATIC)
+                m_staticModels[entry.path().filename()] = loadStaticModel(file);
+
+            LOG_INFO("Loaded model with name " + entry.path().filename().string());
+        }
+    }
+}
+
+void AssetsManager::preLoadAllTexturesFromFolder(const std::string &folder)
+{
+    if (!std::filesystem::exists(folder))
+    {
+        LOG_ERROR(folder + " does not exist");
+        return;
+    }
+
+    for (const auto& entry : std::filesystem::directory_iterator(folder))
+    {
+        const std::string& extension = entry.path().extension();
+
+        if (extension == ".png")
+        {
+            std::filesystem::path file(entry.path());
+
+            m_textures[entry.path().filename()] = loadTexture(file);
+
+            LOG_INFO("Loaded texture with name " + entry.path().filename().string());
+        }
+    }
+}
+
+void AssetsManager::preLoadMaterialsFromFolder(const std::string &folder)
+{
+    if (!std::filesystem::exists(folder))
+    {
+        LOG_ERROR(folder + " does not exist");
+        return;
+    }
+
+    for (const auto& entry : std::filesystem::directory_iterator(folder))
+    {
+        if (entry.path().extension() == ".mat")
+        {
+            m_materials[entry.path().filename()] = loadMaterial(entry.path().string());
+
+            LOG_INFO("Loaded material with name " + entry.path().filename().string());
+        }
+    }
+}
+
 std::vector<SkinnedModel*> AssetsManager::getAllSkinnedModels()
 {
     std::vector<SkinnedModel*> skinnedModels;
@@ -248,12 +328,12 @@ Material* AssetsManager::loadMaterialFromModel(aiMaterial *aiMat)
     if (m_materials.contains(material.getName()))
         return &m_materials[material.getName()];
 
-    if (m_materialsPaths.contains(filesystem::getMaterialsFolderPath().string() + '/' + material.getName() + ".mat"))
-    {
-        preLoadMaterials({material.getName() + ".mat"});
-
-        return getMaterialByName(material.getName() + ".mat");
-    }
+    // if (m_materialsPaths.contains(filesystem::getMaterialsFolderPath().string() + '/' + material.getName() + ".mat"))
+    // {
+    //     preLoadMaterials({material.getName() + ".mat"});
+    //
+    //     return getMaterialByName(material.getName() + ".mat");
+    // }
 
     if (aiMat->GetTextureCount(aiTextureType_DIFFUSE) > 0)
     {
@@ -263,25 +343,22 @@ Material* AssetsManager::loadMaterialFromModel(aiMaterial *aiMat)
             std::string textureName = path.C_Str();
             std::ranges::replace(textureName, '\\', '/');
 
-            size_t pos = textureName.find_last_of('/');
-
-            if (pos != std::string::npos)
+            if (size_t pos = textureName.find_last_of('/'); pos != std::string::npos)
                 textureName = textureName.substr(pos + 1, textureName.size() - pos);
 
             if (std::filesystem::path(textureName).extension() == ".jpg")
             {
-                size_t extension = textureName.find_last_of('.');
-
-                if (extension != std::string::npos)
+                if (const size_t extension = textureName.find_last_of('.'); extension != std::string::npos)
                 {
                     textureName = textureName.substr(0, extension);
                     textureName += ".png";
                 }
             }
 
-            auto* texture = getTextureByName(textureName);
-
-            material.addTexture(elix::Texture::TextureType::Diffuse, texture);
+            if (auto* texture = getTextureByName(textureName))
+                material.addTexture(elix::Texture::TextureType::Diffuse, texture);
+            else
+                LOG_WARN("Failed to load texture with name " + textureName);
         }
     }
 
@@ -311,47 +388,44 @@ Material* AssetsManager::loadMaterialFromModel(aiMaterial *aiMat)
 
             std::cout << textureName << std::endl;
 
-            auto* texture = getTextureByName(textureName);
-
-            material.addTexture(elix::Texture::TextureType::Normal, texture);
+            if (auto* texture = getTextureByName(textureName))
+                material.addTexture(elix::Texture::TextureType::Normal, texture);
+            else
+                LOG_WARN("Failed to load texture with name " + textureName);
         }
     }
 
-    aiColor3D color(0.f, 0.f, 0.f);
-
-    if (aiMat->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS)
-    {
+    if (aiColor3D color(0.f, 0.f, 0.f); aiMat->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS)
         material.setBaseColor(glm::vec3(color.r, color.g, color.b));
-    }
 
     m_materials[material.getName()] = material;
 
-    nlohmann::json json;
+    // nlohmann::json json;
+    //
+    // json["name"] = material.getName() + ".mat";
+    //
+    // const auto& col = material.getBaseColor();
+    //
+    // json["color"] = {col.r, col.g, col.b};
+    // json["textures"] = {
+    //     { "Diffuse", material.getTexture(elix::Texture::TextureType::Diffuse) ? material.getTexture(elix::Texture::TextureType::Diffuse)->getName() : "" },
+    //     { "Normal", material.getTexture(elix::Texture::TextureType::Normal) ? material.getTexture(elix::Texture::TextureType::Normal)->getName() : "" },
+    //     { "Metallic", material.getTexture(elix::Texture::TextureType::Metallic) ? material.getTexture(elix::Texture::TextureType::Metallic)->getName() : "" },
+    //     { "Roughness", material.getTexture(elix::Texture::TextureType::Roughness) ? material.getTexture(elix::Texture::TextureType::Roughness)->getName() : "" },
+    //     { "AO", material.getTexture(elix::Texture::TextureType::AO) ? material.getTexture(elix::Texture::TextureType::AO)->getName() : "" }
+    // };
 
-    json["name"] = material.getName() + ".mat";
-
-    const auto& col = material.getBaseColor();
-
-    json["color"] = {col.r, col.g, col.b};
-    json["textures"] = {
-        { "Diffuse", material.getTexture(elix::Texture::TextureType::Diffuse) ? material.getTexture(elix::Texture::TextureType::Diffuse)->getName() : "" },
-        { "Normal", material.getTexture(elix::Texture::TextureType::Normal) ? material.getTexture(elix::Texture::TextureType::Normal)->getName() : "" },
-        { "Metallic", material.getTexture(elix::Texture::TextureType::Metallic) ? material.getTexture(elix::Texture::TextureType::Metallic)->getName() : "" },
-        { "Roughness", material.getTexture(elix::Texture::TextureType::Roughness) ? material.getTexture(elix::Texture::TextureType::Roughness)->getName() : "" },
-        { "AO", material.getTexture(elix::Texture::TextureType::AO) ? material.getTexture(elix::Texture::TextureType::AO)->getName() : "" }
-    };
-
-    auto fileName = filesystem::getMaterialsFolderPath().string() + "/" + material.getName() + ".mat";
-
-    std::ofstream outFile(fileName);
-
-    if (outFile.is_open())
-    {
-        outFile << std::setw(4) << json << std::endl;
-        outFile.close();
-    }
-    else
-        std::cout << "Could not open file " << fileName << std::endl;
+    // auto fileName = filesystem::getMaterialsFolderPath().string() + "/" + material.getName() + ".mat";
+    //
+    // std::ofstream outFile(fileName);
+    //
+    // if (outFile.is_open())
+    // {
+    //     outFile << std::setw(4) << json << std::endl;
+    //     outFile.close();
+    // }
+    // else
+    //     std::cout << "Could not open file " << fileName << std::endl;
 
     return &m_materials[material.getName()];
 }
@@ -392,10 +466,9 @@ void AssetsManager::loadMaterialFromFile(const std::string &path, common::Model*
 
     for (int i = 0; i < model->getMeshesSize(); ++i)
         loadMaterialsRecursively(scene->mRootNode, scene, i, loadMaterialsRecursively);
-
 }
 
-void AssetsManager::saveAnimationToJson(const common::Animation &animation)
+void AssetsManager::saveAnimationToJson(const common::Animation& animation, const std::string& path)
 {
     nlohmann::json animationJson;
 
@@ -403,20 +476,20 @@ void AssetsManager::saveAnimationToJson(const common::Animation &animation)
     animationJson["duration"] = animation.duration;
     animationJson["ticksPerSecond"] = animation.ticksPerSecond;
 
-    for (const auto& boneAnimation : animation.boneAnimations)
+    for (const auto&[keyFrames, objectName] : animation.boneAnimations)
     {
         nlohmann::json boneAnimationJson;
 
-        boneAnimationJson["targetName"] = boneAnimation.objectName;
+        boneAnimationJson["targetName"] = objectName;
 
-        for (const auto& sqt : boneAnimation.keyFrames)
+        for (const auto&[rotation, position, scale, timeStamp] : keyFrames)
         {
             nlohmann::json keyFramesJson;
 
-            keyFramesJson["timeStamp"] = sqt.timeStamp;
-            keyFramesJson["position"] = {sqt.position.x, sqt.position.y, sqt.position.z};
-            keyFramesJson["rotation"] = {sqt.rotation.w, sqt.rotation.x, sqt.rotation.y, sqt.rotation.z};
-            keyFramesJson["scale"] = {sqt.scale.x, sqt.scale.y, sqt.scale.z};
+            keyFramesJson["timeStamp"] = timeStamp;
+            keyFramesJson["position"] = {position.x, position.y, position.z};
+            keyFramesJson["rotation"] = {rotation.w, rotation.x, rotation.y, rotation.z};
+            keyFramesJson["scale"] = {scale.x, scale.y, scale.z};
 
             boneAnimationJson["keyFrames"].push_back(keyFramesJson);
         }
@@ -424,17 +497,13 @@ void AssetsManager::saveAnimationToJson(const common::Animation &animation)
         animationJson["tracks"].push_back(boneAnimationJson);
     }
 
-    const std::string filePath = filesystem::getAnimationsFolderPath().string() + "/" + animation.name + ".anim";
-
-    std::ofstream file(filePath);
-
-    if (file.is_open())
+    if (std::ofstream file(path); file.is_open())
     {
         file << std::setw(4) << animationJson << std::endl;
         file.close();
     }
     else
-        std::cout << "Could not open file to save animation: " << filePath << std::endl;
+        LOG_ERROR( "Failed to write animation: " + path);
 }
 
 common::Animation AssetsManager::loadAnimationFromJson(const std::string &path)
@@ -721,9 +790,6 @@ std::vector<common::Animation> extractAnimations(const aiScene* scene)
         animations.push_back(animation);
     }
 
-    for (const auto& animation : animations)
-        AssetsManager::instance().saveAnimationToJson(animation);
-
     return animations;
 }
 
@@ -773,7 +839,6 @@ std::vector<common::Animation> AssetsManager::extractAnimationsFromModel(const s
 
     return extractAnimations(scene);
 }
-
 
 void assignLocalBindTransforms(aiNode* node, Skeleton& skeleton)
 {
@@ -828,24 +893,24 @@ StaticMesh processStaticMesh(aiMesh* mesh, const aiScene* scene)
 
     staticMesh.setVerticesAndIndices(vertices, indices);
 
-    unsigned int materialIndex = mesh->mMaterialIndex;
+    // unsigned int materialIndex = mesh->mMaterialIndex;
 
-    aiMaterial* tmpMaterial = scene->mMaterials[materialIndex];
-
-    if (tmpMaterial)
-    {
-        auto staticMaterial = AssetsManager::instance().loadMaterialFromModel(tmpMaterial);
-
-        if (staticMaterial)
-        {
-            staticMesh.setMaterial(staticMaterial);
-            std::cout << "Successfully loaded material " << staticMaterial->getName() << std::endl;
-        }
-        else
-            std::cout << "Failed to load material" << std::endl;
-    }
-    else
-        std::cout << "No material in the model" << std::endl;
+    // aiMaterial* tmpMaterial = scene->mMaterials[materialIndex];
+    //
+    // if (tmpMaterial)
+    // {
+    //     auto staticMaterial = AssetsManager::instance().loadMaterialFromModel(tmpMaterial);
+    //
+    //     if (staticMaterial)
+    //     {
+    //         staticMesh.setMaterial(staticMaterial);
+    //         std::cout << "Successfully loaded material " << staticMaterial->getName() << std::endl;
+    //     }
+    //     else
+    //         std::cout << "Failed to load material" << std::endl;
+    // }
+    // else
+    //     std::cout << "No material in the model" << std::endl;
 
     return staticMesh;
 }

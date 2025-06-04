@@ -122,6 +122,60 @@ void elix::Shader::load(const std::string &vertexPath, const std::string &fragme
         glDeleteShader(geometry);
 }
 
+void elix::Shader::loadBinaries(const char *vertexSource, const char *fragmentSource, const char *geometrySource)
+{
+    if (m_id)
+    {
+        glDeleteProgram(m_id);
+        m_uniformCache.clear();
+    }
+
+    const GLuint vertex = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertex, 1, &vertexSource, nullptr);
+    glCompileShader(vertex);
+    ::checkCompileErrors(vertex, "VERTEX");
+
+    const GLuint fragment = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragment, 1, &fragmentSource, nullptr);
+    glCompileShader(fragment);
+    ::checkCompileErrors(fragment, "FRAGMENT");
+
+    GLuint geometry = 0;
+
+    if (geometrySource)
+    {
+        geometry = glCreateShader(GL_GEOMETRY_SHADER);
+        glShaderSource(geometry, 1, &geometrySource, nullptr);
+        glCompileShader(geometry);
+        ::checkCompileErrors(geometry, "GEOMETRY");
+    }
+
+    const int tempID = glCreateProgram();
+    glAttachShader(tempID, vertex);
+    glAttachShader(tempID, fragment);
+
+    if (geometry)
+        glAttachShader(tempID, geometry);
+
+    glLinkProgram(tempID);
+
+    if (::checkCompileErrors(tempID, "PROGRAM"))
+    {
+        if (m_id != -1)
+            glDeleteProgram(m_id);
+
+        m_id = tempID;
+    }
+    else
+        LOG_ERROR("Shader failed to compile embedded sources");
+
+    glDeleteShader(vertex);
+    glDeleteShader(fragment);
+
+    if (geometry)
+        glDeleteShader(geometry);
+}
+
 void elix::Shader::bind() const
 {
     glUseProgram(m_id);

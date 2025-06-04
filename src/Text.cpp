@@ -1,12 +1,11 @@
 #include "Text.hpp"
 #include <iostream>
 
-
 #include <glad/glad.h>
-#include <GLFW/glfw3.h>
 #include <glm/ext/matrix_clip_space.hpp>
 #include "WindowsManager.hpp"
 #include "Filesystem.hpp"
+#include "ShaderManager.hpp"
 
 Text::Text()
 {
@@ -17,19 +16,23 @@ Text::Text()
         throw std::runtime_error("ERROR::FREETYPE: Could not init FreeType Library");
     }
 
-    const std::string shadersDirectory = filesystem::getShadersFolderPath().string();
+    const auto shader = ShaderManager::instance().getShader(ShaderManager::ShaderType::TEXT);
 
-    initShader(shadersDirectory + "/text.vert", shadersDirectory + "/text.frag");
+    const glm::mat4 projection = glm::ortho(0.0f, static_cast<float>(window::WindowsManager::instance().getCurrentWindow()->getWidth()), 0.0f, static_cast<float>(window::WindowsManager::instance().getCurrentWindow()->getHeight()));
+    shader->bind();
+    shader->setMat4("projection", projection);
 }
 
 void Text::draw()
 {
-    m_shader.bind();
+    const auto shader = ShaderManager::instance().getShader(ShaderManager::ShaderType::TEXT);
+
+    shader->bind();
 
     float x = m_x;
     float y = m_y;
 
-    m_shader.setVec3("textColor", m_color);
+    shader->setVec3("textColor", m_color);
 
     glActiveTexture(GL_TEXTURE0);
     glBindVertexArray(m_vao);
@@ -67,15 +70,6 @@ void Text::draw()
 
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-void Text::initShader(const std::string &vertexPath, const std::string &fragmentPath)
-{
-    m_shader.load(vertexPath, fragmentPath);
-
-    const glm::mat4 projection = glm::ortho(0.0f, static_cast<float>(window::WindowsManager::instance().getCurrentWindow()->getWidth()), 0.0f, static_cast<float>(window::WindowsManager::instance().getCurrentWindow()->getHeight()));
-    m_shader.bind();
-    m_shader.setMat4("projection", projection);
 }
 
 void Text::setFont(const std::string& pathToFont)

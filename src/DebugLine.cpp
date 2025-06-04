@@ -2,15 +2,12 @@
 #include "DrawCall.hpp"
 #include "Filesystem.hpp"
 #include "WindowsManager.hpp"
+#include "ShaderManager.hpp"
 
 elix::debug::DebugLine::DebugLine()
 {
     m_vao.create();
     m_vbo.create();
-
-    const std::string path = filesystem::getShadersFolderPath().string();
-
-    m_shader.load(path + "/line.vert", path + "/line.frag");
 }
 
 void elix::debug::DebugLine::draw(const glm::vec3 &from, const glm::vec3 &to, const glm::mat4 &view, const glm::mat4 &projection)
@@ -29,11 +26,13 @@ void elix::debug::DebugLine::draw(const glm::vec3 &from, const glm::vec3 &to, co
 
     m_vao.setAttribute(0, 3, VertexArray::Type::Float, false, 3 * sizeof(float), nullptr);
 
-    m_shader.bind();
+    const auto shader = ShaderManager::instance().getShader(ShaderManager::ShaderType::LINE);
 
-    m_shader.setMat4("projection", projection);
-    m_shader.setMat4("view", view);
-    m_shader.setVec4("uColor", m_color);
+    shader->bind();
+
+    shader->setMat4("projection", projection);
+    shader->setMat4("view", view);
+    shader->setVec4("uColor", m_color);
 
     elix::DrawCall::drawArrays(elix::DrawCall::DrawMode::LINES, 0, 2);
 

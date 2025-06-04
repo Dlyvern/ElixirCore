@@ -12,13 +12,7 @@ public:
 
     virtual ~Scene();
 
-    virtual void update(float deltaTime) = 0;
-
-    virtual void create() = 0;
-
-    virtual bool isOver() = 0;
-
-    void setOnSceneEndCallback(const std::function<void(Scene* scene)>& callback);
+    void update(float deltaTime);
 
     void setSkybox(const std::shared_ptr<elix::Skybox>& skybox);
 
@@ -35,9 +29,6 @@ public:
     const std::vector<std::shared_ptr<GameObject>>& getGameObjects();
 
     const std::vector<std::shared_ptr<Drawable>>& getDrawables();
-
-protected:
-    std::function<void(Scene* scene)> onEndSceneCallback_;
 
 private:
     std::vector<std::shared_ptr<GameObject>> m_objects;

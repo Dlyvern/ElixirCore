@@ -1,6 +1,8 @@
 #ifndef SCRIPT_HPP
 #define SCRIPT_HPP
 
+#include <string>
+
 class GameObject;
 
 class Script

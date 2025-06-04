@@ -7,21 +7,23 @@
 
 void ScriptComponent::addScript(const std::string &name)
 {
-    using GetScriptsRegisterFunc = ScriptsRegister* (*)();
+    // using GetScriptsRegisterFunc = ScriptsRegister* (*)();
+    //
+    // auto function = (GetScriptsRegisterFunc)ScriptsLoader::instance().getFunction("getScriptsRegister", ScriptsLoader::instance().library);
+    //
+    // if (!function)
+    // {
+    //     std::cerr << "ScriptComponent::addScript(): Script " << name << " not found!" << std::endl;
+    //     return;
+    // }
+    //
+    // ScriptsRegister* s = function();
 
-    auto function = (GetScriptsRegisterFunc)ScriptsLoader::instance().getFunction("getScriptsRegister", ScriptsLoader::instance().library);
+    // auto script = s->createScript(name);
 
-    if (!function)
-    {
-        std::cerr << "ScriptComponent::addScript(): Script " << name << " not found!" << std::endl;
-        return;
-    }
+    auto script = ScriptsRegister::instance().createScript(name);
 
-    ScriptsRegister* s = function();
-
-    auto script = s->createScript(name);
-
-    if (!script)
+        if (!script)
     {
         std::cerr << "ScriptComponent::addScript(): Script " << name << " not found!" << std::endl;
         return;

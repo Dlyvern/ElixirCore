@@ -1,6 +1,9 @@
 #include "ShaderManager.hpp"
 #include "Filesystem.hpp"
 #include "Skeleton.hpp"
+#include "EmbeddedShaders.hpp"
+#include <iostream>
+
 
 ShaderManager& ShaderManager::instance()
 {
@@ -17,16 +20,18 @@ void ShaderManager::preLoadShaders()
 {
     const std::string shadersPath = filesystem::getShadersFolderPath().string();
 
-    auto createShader = [](const std::string& vert, const std::string& frag)
+    auto createShader = [](const char* vert, const char* frag)
     {
         elix::Shader shader;
-        shader.load(vert, frag);
+        shader.loadBinaries(vert, frag);
         return shader;
     };
 
-    m_shaders[SKELETON] = createShader(shadersPath + "/skeleton.vert", shadersPath + "/skeleton.frag");
-    m_shaders[STATIC] = createShader(shadersPath + "/cube.vert", shadersPath + "/cube.frag");
-    m_shaders[STATIC_SHADOW] = createShader(shadersPath + "/shadow_map.vert", shadersPath + "/shadow_map.frag");
-    m_shaders[SKELETON_SHADOW] = createShader(shadersPath + "/shadow.vert", shadersPath + "/shadow.frag");
-    m_shaders[POST_PROCESSING] = createShader(shadersPath + "/post_processing.vert", shadersPath + "/post_processing.frag");
+    m_shaders[SKELETON] = createShader(shader_skeleton_vert, shader_skeleton_frag);
+    m_shaders[STATIC] = createShader(shader_cube_vert, shader_cube_frag);
+    m_shaders[STATIC_SHADOW] = createShader(shader_shadow_map_vert, shader_shadow_map_frag);
+    m_shaders[SKELETON_SHADOW] = createShader(shader_shadow_vert, shader_shadow_frag);
+    m_shaders[POST_PROCESSING] = createShader(shader_post_processing_vert, shader_post_processing_frag);
+    m_shaders[LINE] = createShader(shader_line_vert, shader_line_frag);
+    m_shaders[TEXT] = createShader(shader_text_vert, shader_text_frag);
 }
