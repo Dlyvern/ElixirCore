@@ -2,8 +2,6 @@
 #include "GameObject.hpp"
 #include <iostream>
 
-RigidbodyComponent::RigidbodyComponent() = default;
-
 RigidbodyComponent::RigidbodyComponent(const std::shared_ptr<GameObject> &object)
 {
     m_rigidActor = physics::PhysicsController::instance().addStaticActor(object);

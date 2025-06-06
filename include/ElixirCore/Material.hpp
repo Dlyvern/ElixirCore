@@ -1,6 +1,8 @@
 #ifndef MATERIAL_HPP
 #define MATERIAL_HPP
 
+#include <memory>
+
 #include "Texture.hpp"
 #include "Shader.hpp"
 #include <unordered_map>
@@ -26,7 +28,11 @@ public:
     const glm::vec3& getBaseColor() const;
 
     void bind(elix::Shader& shader);
+
+    static std::shared_ptr<Material> getDefaultMaterial();
 private:
+    static inline std::shared_ptr<Material> m_defaultMaterial{nullptr};
+
     std::string m_name{"Undefined"};
     std::unordered_map<elix::Texture::TextureType, elix::Texture*> m_textures;
     glm::vec3 m_baseColor = glm::vec3(128, 128, 128);

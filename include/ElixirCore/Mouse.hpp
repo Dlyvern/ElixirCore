@@ -21,6 +21,7 @@ public:
     static MouseManager& instance();
     static void mouseCallback(GLFWwindow* window, double x, double y);
     static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
+    static void scrollCallback(GLFWwindow* window, double x, double y);
     [[nodiscard]] double getX() const;
     [[nodiscard]] double getY() const;
 

@@ -18,18 +18,18 @@ namespace physics
         void init();
         static PhysicsController& instance();
         void simulate(float deltaTime);
-        physx::PxRigidDynamic* addDynamicActor(std::shared_ptr<GameObject> actor);
+        physx::PxRigidDynamic* addDynamicActor(std::shared_ptr<GameObject> actor) const;
         physx::PxRigidStatic* addStaticActor(std::shared_ptr<GameObject> actor);
 
         void resizeCollider(const glm::vec3& newSize, std::shared_ptr<GameObject> collider);
 
         void release();
 
-        physx::PxControllerManager* getControllerManager();
+        physx::PxControllerManager* getControllerManager() const;
 
-        physx::PxMaterial* getDefaultMaterial();
+        physx::PxMaterial* getDefaultMaterial() const;
 
-        physx::PxScene* getScene();
+        physx::PxScene* getScene() const;
     private:
         physx::PxPhysics* m_physics{nullptr};
         physx::PxScene* m_scene{nullptr};

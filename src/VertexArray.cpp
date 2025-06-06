@@ -31,7 +31,12 @@ void elix::VertexArray::setAttribute(int index, size_t size, Type type, bool nor
 {
     glEnableVertexAttribArray(index);
 
-    glVertexAttribPointer(index, size, toGL(type), normalized ? GL_TRUE : GL_FALSE, stride, data);
+
+    if (type == elix::VertexArray::Type::Float)
+        glVertexAttribPointer(index, size, toGL(type), normalized ? GL_TRUE : GL_FALSE, stride, data);
+    else if (type == elix::VertexArray::Type::Int)
+        glVertexAttribIPointer(index, size, toGL(type), stride, data);
+
 }
 
 unsigned int elix::VertexArray::getId() const

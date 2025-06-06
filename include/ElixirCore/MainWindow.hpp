@@ -73,12 +73,22 @@ namespace window
 
         void viewport() const;
 
+        void swapBuffers() const;
+
         void setSize(int width, int height);
 
     private:
         GLFWwindow* m_window{nullptr};
         WindowData m_currentWindowData{window::FULLSCREEN_WINDOW_DATA};
         bool m_hasFocus{false};
+
+
+        static int viewportX;
+        static int viewportY;
+        static int viewportWidth;
+        static int viewportHeight;
+
+
         
         const std::string m_windowName;
     };

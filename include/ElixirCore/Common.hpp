@@ -25,9 +25,9 @@ namespace common
     {   
         glm::vec3 position;
         glm::vec3 normal;
-        glm::vec2 textureCoordinates;
-        glm::vec3 tangent;
-        glm::vec3 bitangent;
+        glm::vec2 textureCoordinates{0.0f, 0.0f};
+        glm::vec3 tangent{0.0f, 0.0f, 0.0f};
+        glm::vec3 bitangent{0.0f, 0.0f, 0.0f};
         glm::ivec4 boneID = glm::ivec4(-1);
         glm::vec4 weight = glm::vec4(0);
     };
@@ -43,55 +43,6 @@ namespace common
         std::vector<int> children;
         std::vector<BoneInfo*> childrenInfo;
         int parentId{-1};
-    };
-
-    class Mesh
-    {
-    public:
-        virtual void draw() = 0;
-        virtual ~Mesh() = default;
-
-        void setMaterial(Material* material) { m_material = material; }
-
-        Material* getMaterial() const { return m_material; }
-    private:
-        Material* m_material{nullptr};
-    };
-
-    class Model
-    {
-    public:
-        enum class ModelType : uint8_t
-        {
-            SKINNED = 0,
-            STATIC = 1
-        };
-
-        explicit Model(const std::string& name) : m_name(name){}
-
-        Model() = default;
-
-        virtual ~Model() = default;
-
-        [[nodiscard]] std::string getName() const { return m_name; }
-
-        Mesh* getMesh(int index) const
-        {
-            return meshes_[index];
-        }
-
-        size_t getMeshesSize() const
-        {
-            return meshes_.size();
-        }
-
-        virtual void draw() = 0;
-
-    protected:
-        std::vector<Mesh*> meshes_;
-
-    private:
-        std::string m_name;
     };
 
     struct SQT

@@ -3,16 +3,13 @@
 #include <fstream>
 #include <json/json.hpp>
 #include "AnimatorComponent.hpp"
-#include "AssetsManager.hpp"
 #include "Light.hpp"
 #include "LightComponent.hpp"
 #include "LightManager.hpp"
 #include "Logger.hpp"
+#include "MeshComponent.hpp"
 #include "RigidbodyComponent.hpp"
 #include "ScriptsRegister.hpp"
-#include "SkeletalMeshComponent.hpp"
-#include "StaticMeshComponent.hpp"
-
 
 class LightComponent;
 
@@ -22,12 +19,12 @@ SceneManager& SceneManager::instance()
     return instance;
 }
 
-void SceneManager::setCurrentScene(Scene *scene)
+void SceneManager::setCurrentScene(const std::shared_ptr<Scene>& scene)
 {
     m_currentScene = scene;
 }
 
-Scene* SceneManager::getCurrentScene() const
+std::shared_ptr<Scene> SceneManager::getCurrentScene() const
 {
     return m_currentScene;
 }
@@ -38,9 +35,19 @@ void SceneManager::updateCurrentScene(float deltaTime)
         m_currentScene->update(deltaTime);
 }
 
-void SceneManager::saveObjectsIntoFile(const std::vector<std::shared_ptr<GameObject>> &objects,const std::string &filePath)
+void SceneManager::saveSceneToFile(Scene* scene, const std::string &filePath)
 {
+    if (!scene)
+        return;
+
     nlohmann::json json;
+
+    json["name"] = std::filesystem::path(filePath).filename().string();
+
+    if (scene->getSkybox())
+        json["skybox"] = scene->getSkybox()->getAssetPath();
+
+    const auto& objects = scene->getGameObjects();
 
     for (const auto& object : objects)
     {
@@ -50,6 +57,38 @@ void SceneManager::saveObjectsIntoFile(const std::vector<std::shared_ptr<GameObj
         nlohmann::json objectJson;
 
         objectJson["name"] = object->getName();
+        objectJson["position"] = {object->getPosition().x, object->getPosition().y, object->getPosition().z};
+        objectJson["scale"] = {object->getScale().x, object->getScale().y, object->getScale().z};
+        objectJson["rotation"] = {object->getRotation().x, object->getRotation().y, object->getRotation().z};
+
+        if (object->hasComponent<MeshComponent>())
+        {
+            if (auto model = object->getComponent<MeshComponent>()->getModel())
+            {
+                objectJson["model"] = model->getName();
+
+                nlohmann::json materialJson;
+
+                for (int index = 0; index < model->getNumMeshes(); index++)
+                {
+                    auto mesh = model->getMesh(index);
+
+                    Material* material;
+
+                    if (object->overrideMaterials.contains(index))
+                        material = object->overrideMaterials[index];
+                    else
+                        material = mesh->getMaterial();
+
+                    if (material)
+                    {
+                        materialJson[std::to_string(index)] = material->getName();
+                    }
+                }
+
+                objectJson["materials"] = materialJson;
+            }
+        }
 
         if (object->hasComponent<LightComponent>())
         {
@@ -90,65 +129,7 @@ void SceneManager::saveObjectsIntoFile(const std::vector<std::shared_ptr<GameObj
             objectJson["components"].push_back(scriptJson);
         }
 
-        if (object->hasComponent<StaticMeshComponent>())
-        {
-            auto model = object->getComponent<StaticMeshComponent>()->getModel();
-            objectJson["model"] = model ? model->getName() : "";
-
-            nlohmann::json materialJson;
-
-            for (int index = 0; index < model->getMeshesSize(); index++)
-            {
-                auto mesh = model->getMesh(index);
-
-                Material* material;
-
-                if (object->overrideMaterials.contains(index))
-                    material = object->overrideMaterials[index];
-                else
-                    material = mesh->getMaterial();
-
-                if (material)
-                {
-                    materialJson[std::to_string(index)] = material->getName();
-                }
-            }
-
-            objectJson["materials"] = materialJson;
-        }
-        else if (object->hasComponent<SkeletalMeshComponent>())
-        {
-            auto model = object->getComponent<SkeletalMeshComponent>()->getModel();
-            objectJson["skinnedModel"] = model ? model->getName() : "";
-
-            nlohmann::json materialJson;
-
-            for (int index = 0; index < model->getMeshesSize(); index++)
-            {
-                auto mesh = model->getMesh(index);
-
-                Material* material;
-
-                if (object->overrideMaterials.contains(index))
-                    material = object->overrideMaterials[index];
-                else
-                    material = mesh->getMaterial();
-
-                if (material)
-                {
-                    materialJson[std::to_string(index)] = material->getName();
-                }
-            }
-
-            objectJson["materials"] = materialJson;
-
-        }
-
-        objectJson["position"] = {object->getPosition().x, object->getPosition().y, object->getPosition().z};
-        objectJson["scale"] = {object->getScale().x, object->getScale().y, object->getScale().z};
-        objectJson["rotation"] = {object->getRotation().x, object->getRotation().y, object->getRotation().z};
-
-        json["walls"].push_back(objectJson);
+        json["game_objects"].push_back(objectJson);
     }
 
     std::ofstream file(filePath);
@@ -159,71 +140,98 @@ void SceneManager::saveObjectsIntoFile(const std::vector<std::shared_ptr<GameObj
         file.close();
     }
     else
-        std::cout << "SceneManager::saveObjectsIntoFile(): Could not open file to save game objects: " << filePath << std::endl;
+        LOG_ERROR("SceneManager::saveObjectsIntoFile(): Could not open file to save game objects: %s", filePath);
 }
 
-std::vector<std::shared_ptr<GameObject>> SceneManager::loadObjectsFromFile(const std::string& filePath)
+std::shared_ptr<Scene> SceneManager::loadSceneFromFile(const std::string &filePath, elix::AssetsCache& cache)
 {
-    std::vector<std::shared_ptr<GameObject>> objects;
-
     std::ifstream file(filePath);
 
     if (!file.is_open())
     {
-        std::cerr << "SceneManager::loadObjectsFromFile(): Could not open file: " << filePath << std::endl;
-        return objects;
+        LOG_ERROR("SceneManager::loadObjectsFromFile(): Could not open file: %s", filePath);
+        return nullptr;
     }
 
     nlohmann::json json;
-    file >> json;
 
-    if (!json.contains("walls"))
-        return objects;
-
-    for (const auto& objectJson : json["walls"])
+    try
     {
-        const std::string& name = objectJson.contains("name") ? objectJson["name"] : "";
+        file >> json;
+    }
+    catch (const nlohmann::json::parse_error& e)
+    {
+        LOG_ERROR("Failed to parse scene file %s", e.what());
+        return nullptr;
+    }
 
-        const bool isSkinned = objectJson.contains("skinnedModel");
+    auto scene = std::make_shared<Scene>();
 
-        const std::string modelName = objectJson[isSkinned ? "skinnedModel" : "model"];
+    if (json.contains("skybox"))
+    {
+        auto skybox = std::make_shared<elix::Skybox>();
+
+        skybox->init({});
+
+        skybox->loadFromHDR(json["skybox"]);
+
+        scene->setSkybox(skybox);
+    }
+
+    if (!json.contains("game_objects"))
+        return scene;
+
+    std::vector<std::shared_ptr<GameObject>> objects;
+
+    for (const auto& objectJson : json["game_objects"])
+    {
+        const std::string& name = objectJson.value("name", "undefined");
 
         auto gameObject = std::make_shared<GameObject>(name);
 
-        if (common::Model* model = AssetsManager::instance().getModelByName(modelName))
+        if (objectJson.contains("model"))
         {
-            if (isSkinned)
-                gameObject->addComponent<SkeletalMeshComponent>(model);
-            else
-                gameObject->addComponent<StaticMeshComponent>(model);
+            const std::string modelName = objectJson["model"];
 
-            auto& overrideMaterials = gameObject->overrideMaterials;
-
-            if (objectJson.contains("materials"))
+            if (auto modelAsset = cache.getAsset<elix::AssetModel>(modelName))
             {
-                const auto& materials = objectJson["materials"];
+                auto model = modelAsset->getModel();
 
-                for (int i = 0; i < model->getMeshesSize(); ++i)
+                gameObject->addComponent<MeshComponent>(model);
+
+                auto& overrideMaterials = gameObject->overrideMaterials;
+
+                if (objectJson.contains("materials"))
                 {
-                    const std::string indexStr = std::to_string(i);
+                    const auto& materials = objectJson["materials"];
 
-                    if (materials.contains(indexStr))
+                    for (int i = 0; i < model->getNumMeshes(); ++i)
                     {
-                        const std::string materialName = materials[indexStr];
+                        const std::string indexStr = std::to_string(i);
 
-                        if (!materialName.empty())
+                        if (!materials.contains(indexStr))
+                            continue;
+
+                        const std::string materialName = materials.value(indexStr, "");
+
+                        if (materialName.empty())
                         {
-                            if (auto material = AssetsManager::instance().getMaterialByName(materialName))
-                                overrideMaterials[i] = material;
-                            else
-                                LOG_WARN("Could not find material " + materialName);
+                            LOG_WARN("Could not find material in json with given %s", indexStr.c_str());
+                            continue;
                         }
+
+                        if (auto material = cache.getAsset<elix::AssetMaterial>(materialName))
+                            overrideMaterials[i] = material->getMaterial();
+                        else
+                            LOG_WARN("Could not find material %s", materialName.c_str());
                     }
                 }
             }
+            else
+                LOG_ERROR("Could not attach mesh component because missing the model %s", modelName.c_str());
         }
         else
-            LOG_WARN("Could not find model with name " + modelName);
+            LOG_WARN("Could not find model in .json. Is this okay?....");
 
         if (objectJson.contains("position"))
         {
@@ -245,8 +253,8 @@ std::vector<std::shared_ptr<GameObject>> SceneManager::loadObjectsFromFile(const
 
         gameObject->addComponent<RigidbodyComponent>(gameObject);
 
-        if (isSkinned)
-            physics::PhysicsController::instance().resizeCollider({1.0f, 2.0f, 1.0f}, gameObject);
+        // if (isSkinned)
+            // physics::PhysicsController::instance().resizeCollider({1.0f, 2.0f, 1.0f}, gameObject);
 
         if (objectJson.contains("components"))
         {
@@ -293,5 +301,8 @@ std::vector<std::shared_ptr<GameObject>> SceneManager::loadObjectsFromFile(const
     }
 
     file.close();
-    return objects;
+
+    scene->setGameObjects(objects);
+
+    return scene;
 }

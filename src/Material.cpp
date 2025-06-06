@@ -1,5 +1,4 @@
 #include "Material.hpp"
-
 #include <iostream>
 
 Material::Material() = default;
@@ -72,4 +71,16 @@ void Material::bind(elix::Shader &shader)
     bindTex(elix::Texture::TextureType::AO,        "u_AO",        "use_AO");
 
     shader.setVec3("baseColor", m_baseColor);
+}
+
+std::shared_ptr<Material> Material::getDefaultMaterial()
+{
+    if (!m_defaultMaterial)
+    {
+        m_defaultMaterial = std::make_shared<Material>();
+        m_defaultMaterial->setName("default_material");
+        m_defaultMaterial->setBaseColor({128, 128, 128});
+    }
+    
+    return m_defaultMaterial;
 }

@@ -1,11 +1,13 @@
-#include "Shader.hpp"
-
 #include <glad/glad.h>
+
+#include "Shader.hpp"
+#include "Logger.hpp"
+
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 
-#include "Logger.hpp"
+#include <glm/gtc/type_ptr.hpp>
 
 namespace
 {
@@ -33,7 +35,7 @@ namespace
             if (!success)
             {
                 glGetShaderInfoLog(shader, 1024, nullptr, infoLog);
-                LOG_ERROR("Shader compilation error of type: " + std::string(type) + " " + infoLog);
+                LOG_ERROR("Shader compilation error of type: %d %s", type, infoLog);
             }
         }
         else
@@ -43,7 +45,7 @@ namespace
             if (!success)
             {
                 glGetProgramInfoLog(shader, 1024, nullptr, infoLog);
-                LOG_ERROR("Shader linking error of type: " + std::string(type) + " " + infoLog);
+                LOG_ERROR("Shader linking error of type: %d %s", type, infoLog);
             }
         }
 
@@ -113,7 +115,7 @@ void elix::Shader::load(const std::string &vertexPath, const std::string &fragme
         m_id = tempID;
     }
     else
-        LOG_ERROR("Shader failed to compile " + vertexPath + " " + fragmentPath);
+        LOG_ERROR("Shader failed to compile ", vertexPath.c_str(), fragmentPath.c_str());
 
     glDeleteShader(vertex);
     glDeleteShader(fragment);
@@ -196,6 +198,12 @@ bool elix::Shader::isValid() const
     return m_id != 0;
 }
 
+void elix::Shader::setMat4Array(const std::string &name, const std::vector<glm::mat4> &value) const
+{
+    GLint location = getUniformLocation(name);
+    glUniformMatrix4fv(location, value.size(), GL_FALSE, glm::value_ptr(value[0]));
+}
+
 void elix::Shader::setMat4(const std::string& name, const glm::mat4& value) const
 {
     const GLint location = getUniformLocation(name);
@@ -236,7 +244,7 @@ int elix::Shader::getUniformLocation(const std::string& name) const
     const GLint location = glGetUniformLocation(m_id, name.c_str());
 
     if (location == -1)
-        LOG_WARN("Uniform " + name + " not found");
+        LOG_WARN("Uniform ", name, " not found");
 
     m_uniformCache[name] = location;
 

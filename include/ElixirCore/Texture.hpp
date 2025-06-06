@@ -73,6 +73,7 @@ namespace elix
         {
             TextureWrap wrapS = TextureWrap::Repeat;
             TextureWrap wrapT = TextureWrap::Repeat;
+            TextureWrap wrapR = TextureWrap::Repeat;
             TextureFilter minFilter = TextureFilter::Linear;
             TextureFilter magFilter = TextureFilter::Linear;
             BakingType bakingType = BakingType::UnsignedByte;
@@ -101,6 +102,8 @@ namespace elix
         [[nodiscard]]unsigned int getId() const;
 
         void bake();
+
+        void bakeCubemap(int width, int height);
 
         [[nodiscard]] bool isBaked() const;
 

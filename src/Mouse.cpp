@@ -58,6 +58,11 @@ void input::MouseManager::mouseButtonCallback(GLFWwindow *window, int button, in
     }
 }
 
+void input::MouseManager::scrollCallback(GLFWwindow *window, double x, double y)
+{
+
+}
+
 double input::MouseManager::getX() const
 {
     return m_x;

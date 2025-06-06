@@ -2,27 +2,23 @@
 #define RIGID_BODY_COMPONENT_HPP
 
 #include "Component.hpp"
-#include <memory>
-#include <glm/vec3.hpp>
-
 #include "Physics.hpp"
+#include <memory>
 
 class RigidbodyComponent final : public Component
 {
 public:
-    RigidbodyComponent();
-
     explicit RigidbodyComponent(const std::shared_ptr<GameObject>& object);
 
     void update(float deltaTime) override;
 
-    physx::PxRigidActor* getRigidActor() const;
+    [[nodiscard]] physx::PxRigidActor* getRigidActor() const;
 
     void destroy() override;
 private:
     physx::PxRigidActor* m_rigidActor{nullptr};
 
-    void onOwnerPositionChanged(const glm::vec3& postion);
+    void onOwnerPositionChanged(const glm::vec3& position);
 };
 
 #endif //RIGID_BODY_COMPONENT_HPP

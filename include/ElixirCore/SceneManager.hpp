@@ -1,24 +1,27 @@
 #ifndef SCENE_MANAGER_HPP
 #define SCENE_MANAGER_HPP
 #include "Scene.hpp"
+#include "AssetsCache.hpp"
 
 class SceneManager
 {
 public:
     static SceneManager& instance();
 
-    void setCurrentScene(Scene* scene);
+    void setCurrentScene(const std::shared_ptr<Scene>& scene);
 
-    Scene* getCurrentScene() const;
+    [[nodiscard]] std::shared_ptr<Scene> getCurrentScene() const;
 
     void updateCurrentScene(float deltaTime);
 
-    static void saveObjectsIntoFile(const std::vector<std::shared_ptr<GameObject>>& objects, const std::string& filePath);
-    static std::vector<std::shared_ptr<GameObject>> loadObjectsFromFile(const std::string& filePath);
+    static void saveSceneToFile(Scene* scene, const std::string& filePath);
+    static std::shared_ptr<Scene> loadSceneFromFile(const std::string& filePath, elix::AssetsCache& cache);
 
     ~SceneManager() = default;
 private:
-    Scene* m_currentScene{nullptr};
+
+    std::shared_ptr<Scene> m_currentScene{nullptr};
+
 
     SceneManager() = default;
     SceneManager(const SceneManager&) = delete;

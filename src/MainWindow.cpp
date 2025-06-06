@@ -1,6 +1,13 @@
 #include "MainWindow.hpp"
 #include <stdexcept>
 
+#include "Logger.hpp"
+
+int window::MainWindow::viewportX{0};
+int window::MainWindow::viewportY{0};
+int window::MainWindow::viewportWidth{0};
+int window::MainWindow::viewportHeight{0};
+
 window::MainWindow::MainWindow(const std::string& windowTitle, const WindowData& windowData) : m_windowName(windowTitle), m_currentWindowData(windowData)
 {
     m_window = glfwCreateWindow(m_currentWindowData.width, m_currentWindowData.height, m_windowName.c_str(), nullptr, nullptr);
@@ -53,7 +60,31 @@ float window::MainWindow::getTime()
 
 void window::MainWindow::setViewport(int x, int y, int width, int height)
 {
-    glViewport(x, y, width, height);
+    if (viewportX != x || viewportY != y || viewportWidth != width || viewportHeight != height)
+    {
+        glViewport(x, y, width, height);
+        viewportX = x;
+        viewportY = y;
+        viewportWidth = width;
+        viewportHeight = height;
+        LOG_INFO("Changed viewport to ", width, " ", height);
+    }
+}
+
+void window::MainWindow::viewport() const
+{
+    glViewport(0, 0, m_currentWindowData.width, m_currentWindowData.height);
+    viewportX = 0;
+    viewportY = 0;
+    viewportWidth = m_currentWindowData.width;
+    viewportHeight = m_currentWindowData.height;
+
+    LOG_INFO("Changed viewport to ", m_currentWindowData.width, " ", m_currentWindowData.height);
+}
+
+void window::MainWindow::swapBuffers() const
+{
+    glfwSwapBuffers(m_window);
 }
 
 void window::MainWindow::clear(ClearFlag flags)
@@ -81,10 +112,6 @@ void window::MainWindow::lineWidth(float lineWidth)
     glLineWidth(lineWidth);
 }
 
-void window::MainWindow::viewport() const
-{
-    glViewport(0, 0, m_currentWindowData.width, m_currentWindowData.height);
-}
 
 void window::MainWindow::setSize(int width, int height)
 {

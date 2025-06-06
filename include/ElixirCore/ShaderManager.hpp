@@ -15,7 +15,11 @@ public:
         SKELETON_SHADOW = 3,
         POST_PROCESSING = 4,
         LINE = 5,
-        TEXT = 6
+        TEXT = 6,
+        STATIC_STENCIL = 7,
+        SKELETON_STENCIL = 8,
+        SKYBOX = 9,
+        EQUIRECTANGULAR_TO_CUBEMAP = 10,
     };
 
     static ShaderManager& instance();

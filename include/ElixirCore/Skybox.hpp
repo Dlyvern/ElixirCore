@@ -18,15 +18,20 @@ public:
 
     void init(const std::vector<std::string>& faces);
 
-    void render(const glm::mat4& view, const glm::mat4& projection);
+    void render(const glm::mat4& view, const glm::mat4& projection) const;
 
     void loadFromHDR(const std::string& path);
+
+    std::string getAssetPath() const;
+
 private:
     static constexpr unsigned int CUBE_MAP_SIZE{2048};
-    elix::Shader m_skyboxShader;
     unsigned int m_cubeMapTextureId;
 
     elix::VertexArray m_vertexArray;
+
+
+    std::string m_assetPath;
 
     elix::Buffer m_vbo{elix::Buffer::BufferType::Vertex, elix::Buffer::BufferUsage::StaticDraw};
 

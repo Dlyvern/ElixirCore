@@ -2,6 +2,8 @@
 #include <iostream>
 #include "RigidbodyComponent.hpp"
 
+#include "Logger.hpp"
+
 
 struct UserErrorCallback final : physx::PxErrorCallback
 {
@@ -55,41 +57,61 @@ void physics::PhysicsController::release()
         m_foundation->release();
 }
 
-physx::PxControllerManager* physics::PhysicsController::getControllerManager()
+physx::PxControllerManager* physics::PhysicsController::getControllerManager() const
 {
     return m_controllerManager;
 }
 
-physx::PxMaterial* physics::PhysicsController::getDefaultMaterial()
+physx::PxMaterial* physics::PhysicsController::getDefaultMaterial() const
 {
     return m_defaultMaterial;
 }
 
-physx::PxScene* physics::PhysicsController::getScene()
+physx::PxScene* physics::PhysicsController::getScene() const
 {
     return m_scene;
 }
 
-physx::PxRigidDynamic* physics::PhysicsController::addDynamicActor(std::shared_ptr<GameObject> actor)
+physx::PxRigidDynamic* physics::PhysicsController::addDynamicActor(std::shared_ptr<GameObject> actor) const
 {
     if (!m_physics)
     {
-        std::cerr << "physics::PhysicsController::addDynamicActor(): physics is not initialized" << std::endl;
+        LOG_ERROR("Physics is not initialized");
         return nullptr;
     }
 
     if (!m_scene)
     {
-        std::cerr << "physics::PhysicsController::addDynamicActor(): scene is not initialized" << std::endl;
+        LOG_ERROR("Scene is not initialized");
         return nullptr;
     }
 
-   physx:: PxMaterial* material = getDefaultMaterial();
+    const physx::PxTransform transform(physx::PxVec3(actor->getPosition().x, actor->getPosition().y, actor->getPosition().z));
+    physx::PxRigidDynamic* rigidBody = m_physics->createRigidDynamic(transform);
 
-    physx::PxTransform transform(physx::PxVec3(actor->getPosition().x, actor->getPosition().y, actor->getPosition().z));
-    physx::PxRigidDynamic* box = m_physics->createRigidDynamic(transform);
+    if (!rigidBody)
+    {
+        LOG_ERROR("Failed to create rigid body");
+        return nullptr;
+    }
+
+    const physx::PxMaterial* material = getDefaultMaterial();
+
+    if (!material)
+    {
+        LOG_ERROR("Default material missing");
+        return nullptr;
+    }
 
     physx::PxShape* shape = m_physics->createShape(physx::PxBoxGeometry(actor->getScale().x * 0.5f, actor->getScale().y * 0.5f, actor->getScale().z * 0.5f), *material);
+
+    if (!shape)
+    {
+        LOG_ERROR("Failed to create collision shape");
+        rigidBody->release();
+        return nullptr;
+    }
+
     shape->setFlag(physx::PxShapeFlag::eSCENE_QUERY_SHAPE, true);
     shape->setFlag(physx::PxShapeFlag::eSIMULATION_SHAPE, true);
     physx::PxFilterData filterData;
@@ -97,14 +119,21 @@ physx::PxRigidDynamic* physics::PhysicsController::addDynamicActor(std::shared_p
     shape->setSimulationFilterData(filterData);
     shape->setQueryFilterData(filterData);
 
-    box->attachShape(*shape);
-    box->userData = actor.get();
+    if (!rigidBody->attachShape(*shape))
+    {
+        LOG_ERROR("Failed to attach shape");
+        shape->release();
+        rigidBody->release();
+        return nullptr;
+    }
 
-    physx::PxRigidBodyExt::updateMassAndInertia(*box, 10.0f);
+    rigidBody->userData = actor.get();
 
-    m_scene->addActor(*box);
+    physx::PxRigidBodyExt::updateMassAndInertia(*rigidBody, 10.0f);
 
-    return box;
+    m_scene->addActor(*rigidBody);
+
+    return rigidBody;
 }
 
 physx::PxRigidStatic * physics::PhysicsController::addStaticActor(std::shared_ptr<GameObject> actor)
@@ -121,12 +150,31 @@ physx::PxRigidStatic * physics::PhysicsController::addStaticActor(std::shared_pt
         return nullptr;
     }
 
-    physx::PxMaterial* material = getDefaultMaterial();
-    physx::PxTransform transform(physx::PxVec3(actor->getPosition().x, actor->getPosition().y, actor->getPosition().z));
+    const physx::PxMaterial* material = getDefaultMaterial();
+
+    if (!material)
+    {
+        LOG_ERROR("Default material missing");
+        return nullptr;
+    }
+
+    const physx::PxTransform transform(physx::PxVec3(actor->getPosition().x, actor->getPosition().y, actor->getPosition().z));
     physx::PxRigidStatic* staticBody = m_physics->createRigidStatic(transform);
 
-    physx::PxShape* shape;
-    shape = m_physics->createShape(physx::PxBoxGeometry(actor->getScale().x * 0.5f, actor->getScale().y * 0.5f, actor->getScale().z * 0.5f),  *material);
+    if (!staticBody)
+    {
+        LOG_ERROR("Failed to create static body");
+        return nullptr;
+    }
+
+    physx::PxShape* shape = m_physics->createShape(physx::PxBoxGeometry(actor->getScale().x * 0.5f, actor->getScale().y * 0.5f, actor->getScale().z * 0.5f),  *material);
+
+    if (!shape)
+    {
+        LOG_ERROR("Failed to create collision shape");
+        staticBody->release();
+        return nullptr;
+    }
 
     shape->setFlag(physx::PxShapeFlag::eSCENE_QUERY_SHAPE, true); // Enable raycasting
     shape->setFlag(physx::PxShapeFlag::eSIMULATION_SHAPE, true);   // Optional if you want physics
@@ -135,7 +183,14 @@ physx::PxRigidStatic * physics::PhysicsController::addStaticActor(std::shared_pt
     shape->setSimulationFilterData(filterData);
     shape->setQueryFilterData(filterData);
 
-    staticBody->attachShape(*shape);
+    if (!staticBody->attachShape(*shape))
+    {
+        LOG_ERROR("Failed to attach shape");
+        shape->release();
+        staticBody->release();
+        return nullptr;
+    }
+
     staticBody->userData = actor.get();
 
     m_scene->addActor(*staticBody);

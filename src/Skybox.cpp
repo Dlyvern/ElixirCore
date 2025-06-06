@@ -1,6 +1,7 @@
+#include <glad/glad.h>
+
 #include "Skybox.hpp"
 
-#include <glad/glad.h>
 #include <iostream>
 #include <stb/stb_image.h>
 #define STB_IMAGE_IMPLEMENTATION
@@ -11,8 +12,7 @@
 #include "DrawCall.hpp"
 #include "FrameBuffer.hpp"
 #include "MainWindow.hpp"
-#include "Texture.hpp"
-#include "ElixirCore/Filesystem.hpp"
+#include "ShaderManager.hpp"
 
 elix::Skybox::Skybox() = default;
 
@@ -68,10 +68,9 @@ void elix::Skybox::init(const std::vector<std::string> &faces)
          1.0f, -1.0f,  1.0f
     };
 
-    const std::string folder = filesystem::getShadersFolderPath().string();
-    m_skyboxShader.load(folder + "/skybox.vert", folder + "/skybox.frag");
-    m_skyboxShader.bind();
-    m_skyboxShader.setInt("skybox", 0);
+    const auto shader = ShaderManager::instance().getShader(ShaderManager::ShaderType::SKYBOX);
+    shader->bind();
+    shader->setInt("skybox", 0);
 
     m_vertexArray.create();
 
@@ -87,14 +86,16 @@ void elix::Skybox::init(const std::vector<std::string> &faces)
     m_cubeMapTextureId = loadCubemap(faces);
 }
 
-void elix::Skybox::render(const glm::mat4& view, const glm::mat4& projection)
+void elix::Skybox::render(const glm::mat4& view, const glm::mat4& projection) const
 {
     window::MainWindow::setDepthFunc(true);
 
-    m_skyboxShader.bind();
+    const auto shader = ShaderManager::instance().getShader(ShaderManager::ShaderType::SKYBOX);
 
-    m_skyboxShader.setMat4("view", glm::mat4(glm::mat3(view)));
-    m_skyboxShader.setMat4("projection", projection);
+    shader->bind();
+
+    shader->setMat4("view", glm::mat4(glm::mat3(view)));
+    shader->setMat4("projection", projection);
 
     m_vertexArray.bind();
     glActiveTexture(GL_TEXTURE0);
@@ -106,6 +107,7 @@ void elix::Skybox::render(const glm::mat4& view, const glm::mat4& projection)
 
 void elix::Skybox::loadFromHDR(const std::string &path)
 {
+    m_assetPath = path;
     // elix::Texture hdrTexture;
     //
     // elix::Texture::TextureParams hdrTextureParams;
@@ -141,10 +143,14 @@ void elix::Skybox::loadFromHDR(const std::string &path)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     elix::FrameBuffer frameBuffer;
-    frameBuffer.create(CUBE_MAP_SIZE, CUBE_MAP_SIZE);
+    frameBuffer.create(CUBE_MAP_SIZE, CUBE_MAP_SIZE, elix::FrameBuffer::InternalFormat::DEPTH24);
+    frameBuffer.addAttachment(elix::FrameBuffer::Attachment::DEPTH);
+
+
 
     glGenTextures(1, &m_cubeMapTextureId);
     glBindTexture(GL_TEXTURE_CUBE_MAP, m_cubeMapTextureId);
+
     for (unsigned int i = 0; i < 6; ++i)
         glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, CUBE_MAP_SIZE, CUBE_MAP_SIZE, 0, GL_RGB, GL_FLOAT, nullptr);
 
@@ -164,17 +170,15 @@ void elix::Skybox::loadFromHDR(const std::string &path)
         glm::lookAt(glm::vec3(0,0,0), glm::vec3( 0, 0,-1), glm::vec3(0,-1, 0)),
     };
 
-    const std::string shaderPath = filesystem::getShadersFolderPath().string();
-
-    elix::Shader convertShader;
-    convertShader.load(shaderPath + "/equirectangular_to_cubemap.vert", shaderPath + "/equirectangular_to_cubemap.frag");
-    convertShader.bind();
-    convertShader.setInt("equirectangularMap", 0);
-    convertShader.setMat4("projection", captureProjection);
-
     // hdrTexture.bind();
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, hdrTexture);
+
+    const auto convertShader = ShaderManager::instance().getShader(ShaderManager::ShaderType::EQUIRECTANGULAR_TO_CUBEMAP);
+    convertShader->bind();
+    convertShader->setInt("equirectangularMap", 0);
+    convertShader->setMat4("projection", captureProjection);
+
 
     window::MainWindow::setViewport(0, 0, CUBE_MAP_SIZE, CUBE_MAP_SIZE);
 
@@ -182,7 +186,7 @@ void elix::Skybox::loadFromHDR(const std::string &path)
 
     for (unsigned int i = 0; i < 6; ++i)
     {
-        convertShader.setMat4("view", captureViews[i]);
+        convertShader->setMat4("view", captureViews[i]);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, m_cubeMapTextureId, 0);
 
         window::MainWindow::clear(window::ClearFlag::COLOR_BUFFER_BIT | window::ClearFlag::DEPTH_BUFFER_BIT);
@@ -197,6 +201,11 @@ void elix::Skybox::loadFromHDR(const std::string &path)
     glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 }
 
+std::string elix::Skybox::getAssetPath() const
+{
+    return m_assetPath;
+}
+
 unsigned int elix::Skybox::loadCubemap(const std::vector<std::string>& faces)
 {
     unsigned int textureID;
@@ -208,6 +217,7 @@ unsigned int elix::Skybox::loadCubemap(const std::vector<std::string>& faces)
     for (unsigned int i = 0; i < faces.size(); i++)
     {
         unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrComponents, 0);
+
         if (data)
         {
             stbi_set_flip_vertically_on_load(false);

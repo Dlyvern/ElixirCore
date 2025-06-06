@@ -2,8 +2,9 @@
 #define SHADER_HPP
 
 #include <string>
-#include <glm/mat4x4.hpp>
 #include <unordered_map>
+#include <vector>
+#include <glm/mat4x4.hpp>
 
 namespace elix
 {
@@ -23,6 +24,8 @@ namespace elix
         [[nodiscard]] int getId() const;
         [[nodiscard]] bool isValid() const;
 
+
+        void setMat4Array(const std::string& name, const std::vector<glm::mat4>& value) const;
         void setMat4(const std::string& name, const glm::mat4& value) const;
         void setVec3(const std::string& name, const glm::vec3& value) const;
         void setVec4(const std::string& name, const glm::vec4& value) const;
