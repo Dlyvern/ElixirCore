@@ -1,0 +1,58 @@
+name: Build Engine
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (Windows)
+        run: |
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+          choco install ninja
+
+      - name: Configure CMake (Windows)
+        run: |
+          cmake -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build (Windows)
+        run: |
+          cmake --build build --config Release
+
+      - name: Upload Artifacts (Windows)
+        uses: actions/upload-artifact@v3
+        with:
+          name: Windows-Build
+          path: build/Release/
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build libgl1-mesa-dev libxrandr-dev libxi-dev
+
+      - name: Configure CMake (Linux)
+        run: |
+          cmake -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build (Linux)
+        run: |
+          cmake --build build --config Release
+
+      - name: Upload Artifacts (Linux)
+        uses: actions/upload-artifact@v3
+        with:
+          name: Linux-Build
+          path: build/
